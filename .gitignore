@@ -1,0 +1,238 @@
+# Nike-Yahoo AdCP Platform - Git Ignore File
+
+# =====================================================================
+# SECURITY - NEVER COMMIT THESE!
+# =====================================================================
+
+# Environment variables (contains API keys!)
+.env
+.env.local
+.env.*.local
+*.env
+
+# API Keys and Secrets
+*_api_key*
+*secret*
+*token*
+!*token_12345*  # Allow documentation of test token
+
+# =====================================================================
+# PYTHON
+# =====================================================================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual Environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# =====================================================================
+# UV (Python Package Manager)
+# =====================================================================
+
+# uv lock file (can be committed, but excluding for flexibility)
+# uv.lock
+
+# uv cache
+.uv/
+
+# =====================================================================
+# DATABASE
+# =====================================================================
+
+# SQLite databases (OPTIONAL - uncomment if you want to commit DB)
+# *.db
+# *.sqlite
+# *.sqlite3
+
+# Database backups
+*_backup.db
+*.db.backup
+
+# =====================================================================
+# IDE / EDITORS
+# =====================================================================
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# PyCharm
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# Sublime Text
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.swp
+*.swo
+*~
+
+# Emacs
+*~
+\#*\#
+.\#*
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# =====================================================================
+# OPERATING SYSTEM
+# =====================================================================
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# =====================================================================
+# LOGS
+# =====================================================================
+
+*.log
+logs/
+*.log.*
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# =====================================================================
+# TEMPORARY FILES
+# =====================================================================
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# CSV exports (optional - uncomment if you don't want to commit)
+# *.csv
+# *_export.csv
+
+# =====================================================================
+# PROJECT SPECIFIC
+# =====================================================================
+
+# MCP Server runtime
+yahoo_mcp_server/.env
+
+# Streamlit cache (for Phase 3)
+.streamlit/
+*.streamlit/
+
+# Test outputs
+test_output/
+test_results/
+
+# Documentation drafts
+*_draft.md
+*_wip.md
+
+# =====================================================================
+# KEEP THESE FILES (Explicitly tracked)
+# =====================================================================
+
+# Keep template files
+!env.template
+!.env.example
+
+# Keep test tokens in documentation
+!nike_token_12345
+
+# Keep database schema
+!database/schema.sql
+
+# Keep sample database (optional - comment out if too large)
+!database/adcp_platform.db
+

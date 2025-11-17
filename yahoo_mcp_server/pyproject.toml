@@ -1,0 +1,20 @@
+[project]
+name = "yahoo-mcp-server"
+version = "1.0.0"
+description = "Yahoo AdCP Sales Agent - MCP Server Implementation"
+requires-python = ">=3.10"
+dependencies = [
+    "fastmcp>=0.5.0",
+    "sqlalchemy>=2.0.0",
+    "google-generativeai>=0.3.0",
+    "openai>=1.0.0",
+    "python-dotenv>=1.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+dev-dependencies = []
+
