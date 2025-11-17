@@ -17,8 +17,9 @@ try:
     import google.generativeai as genai
     if os.getenv("GEMINI_API_KEY"):
         genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
-        gemini_client = genai.GenerativeModel('gemini-1.5-pro')
-        logger.info("✓ Gemini client initialized")
+        # Use gemini-1.5-flash (fast, efficient, available in v1beta)
+        gemini_client = genai.GenerativeModel('gemini-1.5-flash')
+        logger.info("✓ Gemini client initialized (gemini-1.5-flash)")
 except Exception as e:
     logger.warning(f"Gemini initialization failed: {e}")
 
@@ -61,15 +62,32 @@ async def generate_completion(prompt: str, response_format: str = "json") -> Opt
     # Fallback to OpenAI
     if openai_client:
         try:
-            response = openai_client.chat.completions.create(
-                model="gpt-4-turbo-preview",
-                messages=[
-                    {"role": "system", "content": "You are a helpful assistant that provides structured responses."},
+            # Build request parameters
+            request_params = {
+                "model": "gpt-4-turbo-preview",
+                "messages": [
+                    {"role": "system", "content": "You are a helpful assistant that provides structured responses. Always return valid JSON without markdown code blocks."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.3
-            )
+                "temperature": 0.3
+            }
+            
+            # Add JSON mode if expected format is JSON
+            if response_format == "json":
+                request_params["response_format"] = {"type": "json_object"}
+            
+            response = openai_client.chat.completions.create(**request_params)
             text = response.choices[0].message.content.strip()
+            
+            # Strip markdown code blocks if present
+            if text.startswith('```'):
+                # Extract content between ```json and ``` or ``` and ```
+                lines = text.split('\n')
+                if lines[0].startswith('```'):
+                    lines = lines[1:]  # Remove opening ```
+                if lines and lines[-1].strip() == '```':
+                    lines = lines[:-1]  # Remove closing ```
+                text = '\n'.join(lines).strip()
             
             # Validate JSON if expected
             if response_format == "json":

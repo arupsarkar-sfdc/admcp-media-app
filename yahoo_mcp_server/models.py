@@ -3,8 +3,7 @@ SQLAlchemy Models for Yahoo MCP Server
 Maps to existing SQLite database from Phase 1
 """
 from sqlalchemy import Column, String, Integer, Float, Text, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 import json
 
 Base = declarative_base()
@@ -35,12 +34,12 @@ class Principal(Base):
     principal_id = Column(String, nullable=False)
     auth_token = Column(String, nullable=False)
     access_level = Column(String, default='standard')
-    metadata = Column(Text)  # JSON
+    principal_metadata = Column('metadata', Text)  # JSON - map to 'metadata' column in DB
     is_active = Column(Integer, default=1)
     created_at = Column(String)
     
     def metadata_dict(self):
-        return json.loads(self.metadata) if self.metadata else {}
+        return json.loads(self.principal_metadata) if self.principal_metadata else {}
 
 
 class MatchedAudience(Base):
