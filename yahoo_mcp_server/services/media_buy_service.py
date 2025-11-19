@@ -8,7 +8,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
-from models import MediaBuy, Product, Principal, MatchedAudience, Creative
+from models import MediaBuy, Product, Principal, MatchedAudience, Creative, Package, PackageFormat
 
 logger = logging.getLogger(__name__)
 
@@ -210,24 +210,24 @@ class MediaBuyService:
         safe_name = campaign_name.lower().replace(" ", "_")[:30]
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         media_buy_id = f"{safe_name}_{timestamp}"
+        media_buy_uuid = str(uuid.uuid4())
         
-        # Create media buy with packages stored in JSON
+        # Create media buy (AdCP v2.3.0 with normalized packages)
         media_buy = MediaBuy(
-            id=str(uuid.uuid4()),
+            id=media_buy_uuid,
             tenant_id=principal.tenant_id,
             media_buy_id=media_buy_id,
             principal_id=principal.id,
+            campaign_name=campaign_name,
+            adcp_version="2.3.0",
             product_ids=json.dumps([p.id for p in products]),
             total_budget=total_budget,
             currency=currency,
             flight_start_date=flight_start_date,
             flight_end_date=flight_end_date,
-            targeting=json.dumps({
-                "adcp_version": "2.3.0",
-                "packages": packages  # Store full package structure
-            }),
+            targeting=None,  # AdCP v2.3.0: Use packages table instead of JSON
             matched_audience_id=matched_audience_id,
-            assigned_creatives=None,  # Creatives now defined per-package via format_ids
+            assigned_creatives=None,  # AdCP v2.3.0: Use package_formats table
             status="pending",
             workflow_state=json.dumps({
                 "created_by": principal.principal_id,
@@ -239,22 +239,43 @@ class MediaBuyService:
         )
         
         self.session.add(media_buy)
-        self.session.commit()
+        self.session.flush()  # Flush to get media_buy.id before creating packages
         
         logger.info(f"Created AdCP v2.3.0 media buy: {media_buy_id}")
         
-        # Build response with package details
+        # Create normalized Package records
+        created_packages = []
+        for idx, pkg_data in enumerate(packages, 1):
+            package = self._create_package(
+                media_buy=media_buy,
+                package_idx=idx,
+                package_data=pkg_data,
+                product_map=product_map
+            )
+            created_packages.append(package)
+        
+        self.session.commit()
+        logger.info(f"Created {len(created_packages)} package(s) with formats")
+        
+        # Build response with package details from database
         package_details = []
-        for pkg in packages:
-            product = product_map[pkg["product_id"]]
+        for package in created_packages:
+            # Get product info
+            product = self.session.query(Product).filter(Product.id == package.product_id).first()
+            
+            # Get package formats
+            package_formats = self.session.query(PackageFormat).filter(
+                PackageFormat.package_id == package.id
+            ).all()
+            
             package_details.append({
-                "product_id": pkg["product_id"],
-                "product_name": product.name,
-                "budget": pkg["budget"],
-                "format_count": len(pkg["format_ids"]),
-                "formats": [fmt["id"] for fmt in pkg["format_ids"]],
-                "pacing": pkg.get("pacing", "even"),
-                "pricing_strategy": pkg.get("pricing_strategy", "cpm")
+                "product_id": product.product_id if product else "unknown",
+                "product_name": product.name if product else "Unknown Product",
+                "budget": package.budget,
+                "format_count": len(package_formats),
+                "formats": [pf.format_id for pf in package_formats],
+                "pacing": package.pacing,
+                "pricing_strategy": package.pricing_strategy
             })
         
         return {
@@ -278,6 +299,89 @@ class MediaBuyService:
             },
             "created_at": media_buy.created_at
         }
+    
+    def _create_package(
+        self,
+        media_buy: MediaBuy,
+        package_idx: int,
+        package_data: Dict[str, Any],
+        product_map: Dict[str, Product]
+    ) -> Package:
+        """
+        Create a normalized Package record with associated PackageFormat records.
+        
+        Args:
+            media_buy: Parent media buy record
+            package_idx: Package index (1-based)
+            package_data: Package data from AdCP v2.3.0 request
+            product_map: Map of product_id → Product
+        
+        Returns:
+            Created Package record
+        """
+        product = product_map[package_data["product_id"]]
+        package_id = f"pkg_{package_idx}"
+        package_uuid = str(uuid.uuid4())
+        
+        # Create Package record
+        package = Package(
+            id=package_uuid,
+            media_buy_id=media_buy.id,
+            package_id=package_id,
+            product_id=product.id,
+            budget=package_data["budget"],
+            currency=package_data.get("currency", "USD"),
+            pacing=package_data.get("pacing", "even"),
+            pricing_strategy=package_data.get("pricing_strategy", "cpm"),
+            targeting_overlay=json.dumps(package_data.get("targeting_overlay", {})),
+            created_at=datetime.now().isoformat(),
+            updated_at=datetime.now().isoformat()
+        )
+        
+        self.session.add(package)
+        self.session.flush()  # Flush to get package.id
+        
+        # Create PackageFormat records
+        format_ids = package_data.get("format_ids", [])
+        for fmt in format_ids:
+            package_format = PackageFormat(
+                id=str(uuid.uuid4()),
+                package_id=package.id,
+                agent_url=fmt["agent_url"],
+                format_id=fmt["id"],
+                format_name=self._get_format_name(fmt["id"]),  # Denormalized for performance
+                format_type=self._get_format_type(fmt["id"]),
+                created_at=datetime.now().isoformat()
+            )
+            self.session.add(package_format)
+        
+        logger.info(f"Created package {package_id} with {len(format_ids)} format(s)")
+        return package
+    
+    def _get_format_name(self, format_id: str) -> str:
+        """Get human-readable format name from format_id"""
+        format_names = {
+            "display_300x250": "Display - Medium Rectangle (300x250)",
+            "display_728x90": "Display - Leaderboard (728x90)",
+            "display_160x600": "Display - Wide Skyscraper (160x600)",
+            "video_preroll_640x480": "Video - Preroll (640x480)",
+            "video_midroll_1280x720": "Video - Midroll (1280x720)",
+            "video_outstream_1920x1080": "Video - Outstream (1920x1080)",
+            "native_feed": "Native - Feed",
+            "native_content": "Native - Content",
+            "native_app_install": "Native - App Install"
+        }
+        return format_names.get(format_id, format_id)
+    
+    def _get_format_type(self, format_id: str) -> str:
+        """Get format type from format_id"""
+        if format_id.startswith("display_"):
+            return "display"
+        elif format_id.startswith("video_"):
+            return "video"
+        elif format_id.startswith("native_"):
+            return "native"
+        return "unknown"
     
     async def get_media_buy(
         self,

@@ -119,21 +119,39 @@ class MediaBuy(Base):
     tenant_id = Column(String, nullable=False)
     media_buy_id = Column(String, nullable=False)
     principal_id = Column(String, nullable=False)
-    product_ids = Column(Text, nullable=False)  # JSON
+    
+    # Campaign Metadata (AdCP v2.3.0)
+    campaign_name = Column(String)  # NEW: Human-readable campaign name
+    adcp_version = Column(String, default='2.3.0')  # NEW: AdCP version tracking
+    
+    # Budget & Currency
+    product_ids = Column(Text, nullable=False)  # JSON - DEPRECATED: Use packages table
     total_budget = Column(Float, nullable=False)
     currency = Column(String, default='USD')
+    
+    # Flight Schedule
     flight_start_date = Column(String, nullable=False)
     flight_end_date = Column(String, nullable=False)
-    targeting = Column(Text)  # JSON
+    
+    # Targeting & Audience
+    targeting = Column(Text)  # JSON - DEPRECATED for AdCP v2.3.0: Use packages.targeting_overlay
     matched_audience_id = Column(String)
-    assigned_creatives = Column(Text)  # JSON
+    assigned_creatives = Column(Text)  # JSON - DEPRECATED: Use package_formats
+    
+    # Status & Workflow
     status = Column(String, default='pending')
     workflow_state = Column(Text)  # JSON
+    
+    # Performance Metrics (cached aggregates)
     impressions_delivered = Column(Integer, default=0)
     spend = Column(Float, default=0.0)
     clicks = Column(Integer, default=0)
     conversions = Column(Integer, default=0)
+    
+    # External References
     external_campaign_id = Column(String)
+    
+    # Metadata
     created_at = Column(String)
     updated_at = Column(String)
     
@@ -148,6 +166,70 @@ class MediaBuy(Base):
     
     def workflow_state_dict(self):
         return json.loads(self.workflow_state) if self.workflow_state else {}
+
+
+class Package(Base):
+    """
+    AdCP v2.3.0 Package Entity
+    Each media buy contains 1+ packages, each with its own product, budget, and formats
+    """
+    __tablename__ = 'packages'
+    
+    id = Column(String, primary_key=True)
+    media_buy_id = Column(String, nullable=False)
+    package_id = Column(String, nullable=False)  # 'pkg_1', 'pkg_2', etc.
+    
+    # Product Reference
+    product_id = Column(String, nullable=False)  # Links to products.id
+    
+    # Budget Allocation
+    budget = Column(Float, nullable=False)
+    currency = Column(String, default='USD')
+    
+    # Pacing & Pricing
+    pacing = Column(String, default='even')  # 'even', 'asap', 'frontloaded'
+    pricing_strategy = Column(String, default='cpm')  # 'cpm', 'cpc', 'cpa', 'cpv'
+    
+    # Targeting Overlay (package-specific targeting)
+    targeting_overlay = Column(Text)  # JSON
+    
+    # Performance Metrics (cached from Snowflake)
+    impressions_delivered = Column(Integer, default=0)
+    spend = Column(Float, default=0.0)
+    clicks = Column(Integer, default=0)
+    conversions = Column(Integer, default=0)
+    
+    # Metadata
+    created_at = Column(String)
+    updated_at = Column(String)
+    
+    def targeting_overlay_dict(self):
+        return json.loads(self.targeting_overlay) if self.targeting_overlay else {}
+
+
+class PackageFormat(Base):
+    """
+    AdCP v2.3.0 Package Format Association
+    Junction table linking packages to required creative formats
+    """
+    __tablename__ = 'package_formats'
+    
+    id = Column(String, primary_key=True)
+    package_id = Column(String, nullable=False)
+    
+    # AdCP v2.3.0 format_id structure
+    agent_url = Column(String, nullable=False)
+    format_id = Column(String, nullable=False)
+    
+    # Format Metadata (denormalized for performance)
+    format_name = Column(String)
+    format_type = Column(String)  # 'display', 'video', 'native'
+    
+    # Creative Assignment (optional)
+    assigned_creative_id = Column(String)
+    
+    # Metadata
+    created_at = Column(String)
 
 
 class Creative(Base):
@@ -176,20 +258,34 @@ class Creative(Base):
 
 
 class DeliveryMetric(Base):
+    """
+    Campaign Performance Metrics
+    NOTE: Will be replicated to Snowflake for analytics
+    """
     __tablename__ = 'delivery_metrics'
     
     id = Column(String, primary_key=True)
     media_buy_id = Column(String, nullable=False)
+    package_id = Column(String)  # NEW: Track metrics at package level
+    
+    # Time Dimension
     date = Column(String, nullable=False)
     hour = Column(Integer)
+    
+    # Metrics
     impressions = Column(Integer, default=0)
     clicks = Column(Integer, default=0)
     conversions = Column(Integer, default=0)
     spend = Column(Float, default=0.0)
+    
+    # Dimensions
     product_id = Column(String)
     creative_id = Column(String)
+    format_id = Column(String)  # NEW: Track performance by format
     geo = Column(String)
     device_type = Column(String)
+    
+    # Metadata
     created_at = Column(String)
 
 
