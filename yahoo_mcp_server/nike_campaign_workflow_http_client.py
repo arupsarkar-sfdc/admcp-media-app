@@ -107,65 +107,96 @@ async def run_nike_campaign_workflow():
             print("="*70)
             
             # ================================================================
-            # TEST 2: create_media_buy (Create New Campaign)
+            # TEST 2: create_media_buy (AdCP v2.3.0 Package-Based)
             # ================================================================
             print("\n" + "="*70)
-            print("TEST 2: create_media_buy (Campaign Creation)")
+            print("TEST 2: create_media_buy (AdCP v2.3.0 Package-Based Campaign)")
             print("="*70)
             
             # Use the first product from TEST 1
             selected_product = result_data['products'][0]
             print(f"\n📝 Campaign Configuration:")
+            print(f"   Campaign Name: Nike Air Max Spring 2025")
             print(f"   Selected Product: {selected_product['name']}")
             print(f"   Product ID: {selected_product['product_id']}")
-            print(f"   Budget: $25,000")
+            print(f"   Budget: $25,000 (single package)")
             print(f"   Flight Dates: March 1 - May 31, 2025")
+            print(f"   Creative Formats: Display 728x90, Display 300x250")
             print(f"   Targeting: US, Ages 25-45, Sports interests")
             
-            print(f"\n🚀 Creating campaign...")
+            print(f"\n🚀 Creating AdCP v2.3.0 campaign with package structure...")
+            
+            # Build AdCP v2.3.0 package
+            packages = [
+                {
+                    "product_id": selected_product['product_id'],
+                    "budget": 25000.0,
+                    "format_ids": [
+                        {
+                            "agent_url": "http://localhost:8080/mcp",
+                            "id": "display_728x90"
+                        },
+                        {
+                            "agent_url": "http://localhost:8080/mcp",
+                            "id": "display_300x250"
+                        }
+                    ],
+                    "targeting_overlay": {
+                        "geo": ["US"],
+                        "age": [25, 45],
+                        "interests": ["sports", "running", "fitness"]
+                    },
+                    "pacing": "even",
+                    "pricing_strategy": "cpm"
+                }
+            ]
             
             result = await client.call_tool(
                 "create_media_buy",
                 arguments={
-                    "product_ids": [selected_product['product_id']],
-                    "total_budget": 25000.0,
+                    "campaign_name": "Nike Air Max Spring 2025",
+                    "packages": packages,
                     "flight_start_date": "2025-03-01",
                     "flight_end_date": "2025-05-31",
-                    "targeting": {
-                        "geo": ["US"],
-                        "age": [25, 45],
-                        "interests": ["sports", "running", "fitness"]
-                    }
+                    "currency": "USD"
                 }
             )
             
             campaign_data = json.loads(result.content[0].text)
             
-            print(f"\n✅ Campaign Created Successfully!")
+            print(f"\n✅ AdCP v2.3.0 Campaign Created Successfully!")
+            print(f"   Campaign Name: {campaign_data.get('campaign_name', 'N/A')}")
             print(f"   Campaign ID: {campaign_data['media_buy_id']}")
             print(f"   Status: {campaign_data['status'].upper()}")
-            print(f"   Budget: ${campaign_data['total_budget']:,.2f}")
+            print(f"   AdCP Version: {campaign_data.get('adcp_version', 'N/A')}")
+            print(f"   Total Budget: ${campaign_data['total_budget']:,.2f} {campaign_data.get('currency', 'USD')}")
             print(f"   Flight: {campaign_data['flight_start_date']} to {campaign_data['flight_end_date']}")
             
-            if 'products' in campaign_data and campaign_data['products']:
-                print(f"\n📦 Products Activated:")
-                for prod in campaign_data['products']:
-                    print(f"   - {prod['name']}")
+            if 'packages' in campaign_data and campaign_data['packages']:
+                print(f"\n📦 Package Details:")
+                for i, pkg in enumerate(campaign_data['packages'], 1):
+                    print(f"   Package {i}: {pkg['product_name']}")
+                    print(f"      Budget: ${pkg['budget']:,.2f}")
+                    print(f"      Formats: {', '.join(pkg['formats'])}")
+                    print(f"      Pacing: {pkg.get('pacing', 'even')}")
+                    print(f"      Pricing: {pkg.get('pricing_strategy', 'cpm').upper()}")
             
             if 'matched_audience' in campaign_data and campaign_data['matched_audience']:
                 ma = campaign_data['matched_audience']
                 print(f"\n🎯 Matched Audience (Clean Room):")
-                # Handle different possible response structures
                 if isinstance(ma, dict):
                     if 'segment_name' in ma:
                         print(f"   Segment: {ma['segment_name']}")
                     if 'overlap_count' in ma:
                         print(f"   Matched Users: {ma['overlap_count']:,}")
-                    if 'engagement_score' in ma:
-                        print(f"   Engagement Score: {int(ma['engagement_score']*100)}%")
-                    # If it's just the segment_id
                     if 'segment_id' in ma:
                         print(f"   Segment ID: {ma['segment_id']}")
+            
+            if 'workflow' in campaign_data:
+                workflow = campaign_data['workflow']
+                print(f"\n⚙️  Workflow:")
+                print(f"   Requires Approval: {workflow.get('requires_approval', False)}")
+                print(f"   Next Steps: {workflow.get('next_steps', 'N/A')}")
             
             # Store campaign ID for next tests
             test_campaign_id = campaign_data['media_buy_id']

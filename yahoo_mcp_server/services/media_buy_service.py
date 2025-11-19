@@ -133,6 +133,152 @@ class MediaBuyService:
             "created_at": media_buy.created_at
         }
     
+    async def create_media_buy_v2(
+        self,
+        principal: Principal,
+        campaign_name: str,
+        packages: List[Dict[str, Any]],
+        total_budget: float,
+        flight_start_date: str,
+        flight_end_date: str,
+        currency: str = "USD"
+    ) -> Dict[str, Any]:
+        """
+        Create a new media buy using AdCP v2.3.0 package structure.
+        
+        Each package contains:
+        - product_id: Yahoo product ID
+        - budget: Per-package budget
+        - format_ids: List of creative formats with {"agent_url": "...", "id": "..."}
+        - targeting_overlay: Package-specific targeting (optional)
+        - pacing: Pacing strategy (optional)
+        - pricing_strategy: Pricing model (optional)
+        
+        Args:
+            principal: Authenticated principal
+            campaign_name: Human-readable campaign name
+            packages: AdCP v2.3.0 package array
+            total_budget: Total campaign budget (sum of all packages)
+            flight_start_date: Start date (YYYY-MM-DD)
+            flight_end_date: End date (YYYY-MM-DD)
+            currency: Currency code
+        
+        Returns:
+            Media buy response with ID, packages, and status
+        """
+        logger.info(f"Creating AdCP v2.3.0 media buy: {campaign_name} with {len(packages)} package(s)")
+        
+        # Extract all product IDs
+        product_ids = [pkg["product_id"] for pkg in packages]
+        
+        # Validate products
+        products = self.session.query(Product).filter(
+            Product.product_id.in_(product_ids),
+            Product.tenant_id == principal.tenant_id,
+            Product.is_active == 1
+        ).all()
+        
+        if len(products) != len(product_ids):
+            found_ids = {p.product_id for p in products}
+            missing_ids = set(product_ids) - found_ids
+            raise ValueError(f"Invalid product IDs: {missing_ids}")
+        
+        # Create product lookup
+        product_map = {p.product_id: p for p in products}
+        
+        # Validate budgets
+        for pkg in packages:
+            product = product_map[pkg["product_id"]]
+            if pkg["budget"] < (product.minimum_budget or 0):
+                raise ValueError(
+                    f"Package budget ${pkg['budget']:,.2f} below minimum "
+                    f"${product.minimum_budget:,.2f} for product {pkg['product_id']}"
+                )
+        
+        # Determine matched audience (use first product's audience)
+        matched_audience_id = None
+        matched_audience = None
+        if products[0].matched_audience_ids_list():
+            audience_segment_id = products[0].matched_audience_ids_list()[0]
+            matched_audience = self.session.query(MatchedAudience).filter(
+                MatchedAudience.segment_id == audience_segment_id
+            ).first()
+            if matched_audience:
+                matched_audience_id = matched_audience.id
+        
+        # Generate media buy ID from campaign name
+        safe_name = campaign_name.lower().replace(" ", "_")[:30]
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        media_buy_id = f"{safe_name}_{timestamp}"
+        
+        # Create media buy with packages stored in JSON
+        media_buy = MediaBuy(
+            id=str(uuid.uuid4()),
+            tenant_id=principal.tenant_id,
+            media_buy_id=media_buy_id,
+            principal_id=principal.id,
+            product_ids=json.dumps([p.id for p in products]),
+            total_budget=total_budget,
+            currency=currency,
+            flight_start_date=flight_start_date,
+            flight_end_date=flight_end_date,
+            targeting=json.dumps({
+                "adcp_version": "2.3.0",
+                "packages": packages  # Store full package structure
+            }),
+            matched_audience_id=matched_audience_id,
+            assigned_creatives=None,  # Creatives now defined per-package via format_ids
+            status="pending",
+            workflow_state=json.dumps({
+                "created_by": principal.principal_id,
+                "requires_approval": total_budget > 10000,
+                "campaign_name": campaign_name
+            }),
+            created_at=datetime.now().isoformat(),
+            updated_at=datetime.now().isoformat()
+        )
+        
+        self.session.add(media_buy)
+        self.session.commit()
+        
+        logger.info(f"Created AdCP v2.3.0 media buy: {media_buy_id}")
+        
+        # Build response with package details
+        package_details = []
+        for pkg in packages:
+            product = product_map[pkg["product_id"]]
+            package_details.append({
+                "product_id": pkg["product_id"],
+                "product_name": product.name,
+                "budget": pkg["budget"],
+                "format_count": len(pkg["format_ids"]),
+                "formats": [fmt["id"] for fmt in pkg["format_ids"]],
+                "pacing": pkg.get("pacing", "even"),
+                "pricing_strategy": pkg.get("pricing_strategy", "cpm")
+            })
+        
+        return {
+            "media_buy_id": media_buy_id,
+            "campaign_name": campaign_name,
+            "status": "pending",
+            "adcp_version": "2.3.0",
+            "total_budget": total_budget,
+            "currency": currency,
+            "flight_start_date": flight_start_date,
+            "flight_end_date": flight_end_date,
+            "packages": package_details,
+            "matched_audience": {
+                "segment_id": matched_audience.segment_id,
+                "segment_name": matched_audience.segment_name,
+                "overlap_count": matched_audience.overlap_count
+            } if matched_audience else None,
+            "workflow": {
+                "requires_approval": total_budget > 10000,
+                "next_steps": "Campaign pending approval" if total_budget > 10000 else "Campaign ready to activate"
+            },
+            "created_at": media_buy.created_at
+        }
+    
     async def get_media_buy(
         self,
         media_buy_id: str,
