@@ -59,13 +59,11 @@ class ProductService:
         
         if budget_range:
             min_budget, max_budget = budget_range
-            query = query.filter(
-                Product.minimum_budget >= min_budget * 0.5,  # Allow some flexibility
-                Product.minimum_budget <= max_budget * 1.5
-            )
+            # Product minimum_budget should be <= user's budget (user can afford it)
+            query = query.filter(Product.minimum_budget <= max_budget)
         
         products = query.all()
-        logger.info(f"Found {len(products)} matching products")
+        logger.info(f"Found {len(products)} matching products after filters")
         
         if not products:
             return []
