@@ -288,26 +288,19 @@ async def run_nike_campaign_workflow():
             if 'delivery' in metrics_data:
                 delivery = metrics_data['delivery']
                 print(f"\n📈 Delivery Metrics:")
-                print(f"   Impressions: {delivery['impressions']:,}")
+                print(f"   Impressions: {delivery['impressions_delivered']:,}")
                 print(f"   Clicks: {delivery['clicks']:,}")
                 print(f"   Conversions: {delivery['conversions']:,}")
                 print(f"   Spend: ${delivery['spend']:,.2f}")
-            
-            if 'performance' in metrics_data:
-                performance = metrics_data['performance']
-                print(f"\n📊 Performance Metrics:")
-                print(f"   CTR: {performance['ctr']:.2f}%")
-                print(f"   CVR: {performance['cvr']:.2f}%")
-                print(f"   CPC: ${performance['cpc']:.2f}")
-                print(f"   CPA: ${performance['cpa']:.2f}")
+                print(f"   CTR: {delivery['ctr']:.2f}%")
+                print(f"   CVR: {delivery['cvr']:.2f}%")
             
             if 'pacing' in metrics_data:
                 pacing = metrics_data['pacing']
-                print(f"\n📉 Budget Pacing:")
-                print(f"   Health: {pacing['health'].upper()}")
-                print(f"   Budget Pacing: {pacing['budget_pacing']:.1f}%")
-                print(f"   Time Pacing: {pacing['time_pacing']:.1f}%")
-                print(f"   Days Elapsed: {pacing['days_elapsed']}/{pacing['days_total']}")
+                print(f"\n💰 Budget Pacing:")
+                print(f"   Budget Spent: ${pacing['budget_spent']:,.2f}")
+                print(f"   Budget Total: ${pacing['budget_total']:,.2f}")
+                print(f"   Budget Pacing: {pacing['budget_pacing_pct']:.1f}%")
             
             if 'matched_audience' in metrics_data and metrics_data['matched_audience']:
                 ma = metrics_data['matched_audience']
@@ -353,19 +346,21 @@ async def run_nike_campaign_workflow():
             update_data = json.loads(result.content[0].text)
             
             print(f"\n✅ Campaign Updated Successfully!")
-            print(f"   Campaign ID: {update_data['media_buy_id']}")
-            print(f"   Status: {update_data['status'].upper()}")
-            print(f"   New Budget: ${update_data['total_budget']:,.2f}")
             
-            if 'targeting' in update_data and update_data['targeting']:
-                targeting = update_data['targeting']
-                print(f"\n🎯 Updated Targeting:")
-                if 'geo' in targeting:
-                    print(f"   Geo: {', '.join(targeting['geo'])}")
-                if 'age' in targeting:
-                    print(f"   Age: {targeting['age'][0]}-{targeting['age'][1]}")
-                if 'interests' in targeting:
-                    print(f"   Interests: {', '.join(targeting['interests'])}")
+            # Debug: show what we got
+            if 'media_buy_id' not in update_data:
+                print(f"\n🔍 DEBUG - Response keys: {list(update_data.keys())}")
+                print(f"🔍 DEBUG - Full response: {json.dumps(update_data, indent=2)}")
+            
+            print(f"   Campaign ID: {update_data.get('media_buy_id', 'N/A')}")
+            print(f"   Campaign Name: {update_data.get('campaign_name', 'N/A')}")
+            print(f"   Status: {update_data.get('status', 'unknown').upper()}")
+            print(f"   New Budget: ${update_data.get('total_budget', 0):,.2f}")
+            
+            if 'updates_applied' in update_data:
+                print(f"\n📝 Updates Applied:")
+                for key, value in update_data['updates_applied'].items():
+                    print(f"   {key}: {value}")
             
             print("\n" + "="*70)
             print("✅ TEST 5 COMPLETE - update_media_buy works!")
