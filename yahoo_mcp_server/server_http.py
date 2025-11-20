@@ -20,17 +20,10 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Import models and services (for real tools)
-from models import get_session, Principal
-from services.product_service import ProductService
-from services.media_buy_service import MediaBuyService
-from services.metrics_service import MetricsService
+# Import services (cloud-native, no SQLite)
 from services.datacloud_query_service import get_datacloud_query_service
 from services.snowflake_write_service import get_snowflake_write_service
 from validators.adcp_validator import AdCPValidator
-
-# Database path
-DATABASE_PATH = os.getenv("DATABASE_PATH", "../database/adcp_platform.db")
 
 # Initialize FastMCP server
 mcp = FastMCP(
@@ -111,27 +104,25 @@ async def agent_card(request):
     })
 
 
+class MockPrincipal:
+    """Mock principal for testing (replaces SQLite dependency)"""
+    def __init__(self):
+        self.principal_id = "nike_advertiser"
+        self.tenant_id = "374df0f3-dab1-450d-871f-fbe9569d3042"  # Yahoo Publisher tenant ID
+        self.name = "Nike"
+        self.access_level = "enterprise"
+        self.email = "advertiser@nike.com"
+
 def get_nike_principal():
     """
-    Helper to get Nike principal from database
+    Helper to get Nike principal
+    
     Note: In production, this would come from authenticated request headers (x-adcp-auth)
+    For cloud deployment, principal data comes from environment variables or JWT token
     """
-    session = get_session(DATABASE_PATH)
-    try:
-        principal = session.query(Principal).filter(
-            Principal.principal_id == "nike_advertiser"
-        ).first()
-        
-        if not principal:
-            logger.error("Nike principal not found in database")
-            raise ValueError("Nike principal not found. Run database/seed_data.py first.")
-        
-        return principal
-    except Exception as e:
-        logger.error(f"Error getting principal: {str(e)}")
-        raise
-    finally:
-        session.close()
+    # For now, return mock principal (no SQLite dependency)
+    # TODO: Implement JWT-based principal extraction from x-adcp-auth header
+    return MockPrincipal()
 
 
 # ============================================================================
@@ -985,7 +976,8 @@ async def get_media_buy_report(
 
 if __name__ == "__main__":
     host = os.getenv("MCP_HOST", "0.0.0.0")
-    port = int(os.getenv("MCP_PORT", 8080))
+    # Heroku assigns PORT dynamically, use it if available
+    port = int(os.getenv("PORT", os.getenv("MCP_PORT", "8080")))
     
     print(f"\n🚀 Starting Yahoo MCP Server (HTTP/SSE) - AdCP v2.3.0 Compliant")
     print(f"   Host: {host}:{port}")

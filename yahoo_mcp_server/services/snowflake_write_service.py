@@ -8,13 +8,11 @@ import json
 import uuid
 from datetime import datetime
 from typing import Dict, Any, List, Optional
-from pathlib import Path
 import snowflake.connector
 from dotenv import load_dotenv
 
-# Load Snowflake config from database/.env
-database_env = Path(__file__).parent.parent.parent / "database" / ".env"
-load_dotenv(database_env)
+# Load environment variables (works in local dev and cloud deployment)
+load_dotenv()
 
 
 class SnowflakeWriteService:
