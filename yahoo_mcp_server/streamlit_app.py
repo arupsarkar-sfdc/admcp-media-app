@@ -234,4 +234,4 @@ if prompt := st.chat_input("Ask me about campaigns...", key="chat_input"):
 
 # Footer
 st.divider()
-st.caption("Powered by Claude AI • Connected to Yahoo MCP Server • AdCP v2.3.0 Compliant")
+st.caption("Connected to Yahoo MCP Server • AdCP v2.3.0 Compliant")
