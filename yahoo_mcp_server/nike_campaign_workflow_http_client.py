@@ -12,7 +12,10 @@ import json
 from fastmcp import Client
 
 # Configuration
-MCP_SERVER_URL = "http://localhost:8080/mcp"
+# For Heroku deployment:
+MCP_SERVER_URL = "https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com/mcp"
+# For local testing:
+# MCP_SERVER_URL = "http://localhost:8080/mcp"
 EXISTING_CAMPAIGN_ID = "nike_air_max_spring_q1"  # Campaign with metrics data
 
 
@@ -131,16 +134,16 @@ async def run_nike_campaign_workflow():
                 {
                     "product_id": selected_product['product_id'],
                     "budget": 25000.0,
-                    "format_ids": [
-                        {
-                            "agent_url": "http://localhost:8080/mcp",
-                            "id": "display_728x90"
-                        },
-                        {
-                            "agent_url": "http://localhost:8080/mcp",
-                            "id": "display_300x250"
-                        }
-                    ],
+                        "format_ids": [
+                            {
+                                "agent_url": "https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com/mcp",
+                                "id": "display_728x90"
+                            },
+                            {
+                                "agent_url": "https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com/mcp",
+                                "id": "display_300x250"
+                            }
+                        ],
                     "targeting_overlay": {
                         "geo": ["US"],
                         "age": [25, 45],
