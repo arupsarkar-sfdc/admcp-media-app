@@ -1,5 +1,17 @@
 # 🚀 Heroku Deployment Guide - Yahoo MCP Server
 
+## 🎉 **DEPLOYMENT SUCCESSFUL!**
+
+**Your Live Server:**
+- **URL**: https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com
+- **MCP Endpoint**: https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com/mcp
+- **Discovery**: https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com/.well-known/adagents.json
+- **Status**: ✅ LIVE and RUNNING
+- **Region**: US (us)
+- **Owner**: arup.sarkar@salesforce.com
+
+---
+
 ## ✅ Prerequisites
 
 You have:
@@ -7,6 +19,7 @@ You have:
 - ✅ Heroku CLI installed
 - ✅ Cloud-native MCP server (no SQLite)
 - ✅ All tests passing (6/6)
+- ✅ **DEPLOYED TO HEROKU** ✨
 
 ---
 
@@ -64,31 +77,32 @@ heroku create yahoo-mcp-server
 
 ```bash
 # Snowflake Configuration (WRITES)
-heroku config:set SNOWFLAKE_ACCOUNT=your_account.us-east-1
-heroku config:set SNOWFLAKE_USER=your_snowflake_user
-heroku config:set SNOWFLAKE_PASSWORD=your_snowflake_password
-heroku config:set SNOWFLAKE_DATABASE=ADCP_PLATFORM
-heroku config:set SNOWFLAKE_SCHEMA=PUBLIC
-heroku config:set SNOWFLAKE_WAREHOUSE=COMPUTE_WH
-heroku config:set SNOWFLAKE_ROLE=ACCOUNTADMIN
+heroku config:set SNOWFLAKE_ACCOUNT=your_account.us-east-1 -a yahoo-mcp-server
+heroku config:set SNOWFLAKE_USER=your_snowflake_user -a yahoo-mcp-server
+heroku config:set SNOWFLAKE_PASSWORD=your_snowflake_password -a yahoo-mcp-server
+heroku config:set SNOWFLAKE_DATABASE=ADCP_PLATFORM -a yahoo-mcp-server
+heroku config:set SNOWFLAKE_SCHEMA=PUBLIC -a yahoo-mcp-server
+heroku config:set SNOWFLAKE_WAREHOUSE=COMPUTE_WH -a yahoo-mcp-server
+heroku config:set SNOWFLAKE_ROLE=ACCOUNTADMIN -a yahoo-mcp-server
 
 # Data Cloud Configuration (READS)
-heroku config:set DATACLOUD_TOKEN_URL=https://acme-dcunited-connector-app-58a61db33e61.herokuapp.com/get-token
+heroku config:set DATACLOUD_TOKEN_URL=https://acme-dcunited-connector-app-58a61db33e61.herokuapp.com/get-token -a yahoo-mcp-server
 
 # LLM Configuration
-heroku config:set OPENAI_API_KEY=your_openai_key
-heroku config:set GEMINI_API_KEY=your_gemini_key
+heroku config:set OPENAI_API_KEY=your_openai_key -a yahoo-mcp-server
+heroku config:set GEMINI_API_KEY=your_gemini_key -a yahoo-mcp-server
 
 # MCP Configuration
-heroku config:set MCP_HOST=0.0.0.0
-heroku config:set MCP_BASE_URL=https://yahoo-mcp-server.herokuapp.com
-heroku config:set LOG_LEVEL=INFO
+heroku config:set MCP_HOST=0.0.0.0 -a yahoo-mcp-server
+heroku config:set MCP_BASE_URL=https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com -a yahoo-mcp-server
+heroku config:set LOG_LEVEL=INFO -a yahoo-mcp-server
 
 # Verify config
-heroku config
+heroku config -a yahoo-mcp-server
 ```
 
-**IMPORTANT**: Replace `yahoo-mcp-server` with your actual Heroku app name if different.
+**✅ YOUR ACTUAL HEROKU APP**: `yahoo-mcp-server`  
+**✅ YOUR PUBLIC URL**: `https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com`
 
 ### **STEP 5: Deploy to Heroku**
 
@@ -147,24 +161,24 @@ heroku open
 
 ```bash
 # Get your app URL
-heroku info
+heroku info -a yahoo-mcp-server
 
 # Test agent discovery
-curl https://yahoo-mcp-server.herokuapp.com/.well-known/adagents.json
+curl https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com/.well-known/adagents.json
 
 # Test agent card
-curl https://yahoo-mcp-server.herokuapp.com/.well-known/agent-card.json
+curl https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com/.well-known/agent-card.json
 ```
 
 ### **3. Test MCP Tools**
 
-Update your test client:
+Your test client has been updated to:
 
 ```python
-# nike_campaign_workflow_http_client.py
-MCP_SERVER_URL = "https://yahoo-mcp-server.herokuapp.com"
+# nike_campaign_workflow_http_client.py (ALREADY UPDATED)
+MCP_SERVER_URL = "https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com/mcp"
 
-# Run tests
+# Run tests against Heroku deployment
 uv run python nike_campaign_workflow_http_client.py
 ```
 
@@ -387,7 +401,7 @@ from fastmcp import Client
 
 async def test_heroku_deployment():
     # Your Heroku app URL
-    server_url = "https://yahoo-mcp-server.herokuapp.com/mcp"
+    server_url = "https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com/mcp"
     
     async with Client(server_url) as client:
         # Test 1: Get products
@@ -484,10 +498,27 @@ curl https://yahoo-mcp-server.herokuapp.com/.well-known/adagents.json
 
 ---
 
-## 🚀 You're Ready to Deploy!
+## 🎉 **DEPLOYMENT COMPLETE!**
 
-All files are created and configured. Just run the commands above! 🎉
+**Your Yahoo MCP Server is LIVE at:**
+- **Public URL**: https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com
+- **MCP Endpoint**: https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com/mcp
+- **Status**: ✅ Running
+- **Region**: US
 
-**Your Yahoo MCP Server will be live at:**
-`https://yahoo-mcp-server.herokuapp.com` (or your custom name)
+### **Quick Test Commands:**
+
+```bash
+# Test discovery
+curl https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com/.well-known/adagents.json
+
+# Run full test suite
+cd /Users/arup.sarkar/Projects/Salesforce/admcp-media-app/yahoo_mcp_server
+uv run python nike_campaign_workflow_http_client.py
+
+# View live logs
+heroku logs --tail -a yahoo-mcp-server
+```
+
+🚀 **Your server is cloud-deployed and production-ready!**
 
