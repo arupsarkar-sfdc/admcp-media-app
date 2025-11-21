@@ -12,16 +12,20 @@ class AdCPValidator:
     """Validates AdCP v2.3.0 package structure"""
     
     # Valid creative format IDs from list_creative_formats
+    # MUST match the formats returned by server_http.py::list_creative_formats()
     VALID_FORMAT_IDS = {
+        # Display formats
         "display_300x250",
         "display_728x90",
         "display_160x600",
-        "video_preroll_640x480",
-        "video_midroll_1280x720",
-        "video_outstream_1920x1080",
-        "native_feed",
-        "native_content",
-        "native_app_install"
+        "display_320x50",
+        # Video formats
+        "video_16x9_15s",
+        "video_16x9_30s",
+        "video_9x16_15s",
+        # Native formats
+        "native_content_feed",
+        "native_in_stream"
     }
     
     VALID_PACING_STRATEGIES = {"even", "asap", "frontloaded"}
