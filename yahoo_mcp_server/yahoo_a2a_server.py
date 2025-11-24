@@ -399,9 +399,15 @@ async def execute_task(request: Request):
                     }
                 )
             
-            # Execute skill
+            # Execute skill (handle both sync and async)
             skill_function = SKILLS[skill_id]
-            result = skill_function(task_input)
+            
+            # Check if skill is async
+            import inspect
+            if inspect.iscoroutinefunction(skill_function):
+                result = await skill_function(task_input)
+            else:
+                result = skill_function(task_input)
             
             # Return success response
             return JSONResponse(
