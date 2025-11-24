@@ -12,6 +12,7 @@ dependencies = [
     "httpx>=0.25.0",
     "snowflake-connector-python>=4.1.0",
     "anthropic>=0.74.1",
+    "graphviz>=0.21",
 ]
 
 [build-system]
