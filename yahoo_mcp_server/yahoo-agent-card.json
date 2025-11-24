@@ -1,7 +1,7 @@
 {
     "name": "yahoo_sales_agent",
-    "description": "Yahoo Advertising Platform Agent - AdCP v2.3.0 compliant. Provides access to Yahoo's advertising inventory, campaign creation, and performance tracking.",
-    "defaultInputModes": ["text/plain"],
+    "description": "Yahoo Advertising Platform Agent - AdCP v2.3.0 compliant. Provides access to Yahoo's advertising inventory, campaign creation, and performance tracking via Salesforce Data Cloud and Snowflake.",
+    "defaultInputModes": ["text/plain", "application/json"],
     "defaultOutputModes": ["application/json"],
     "skills": [
         {
@@ -9,10 +9,27 @@
             "name": "Echo",
             "description": "Simple echo test skill that returns the input message. Used for testing A2A connectivity.",
             "tags": ["test", "hello-world"]
+        },
+        {
+            "id": "discover_products",
+            "name": "Discover Products",
+            "description": "Search Yahoo's advertising inventory using natural language brief. Returns products with pricing, reach estimates, targeting capabilities, and creative formats. Data source: Salesforce Data Cloud (virtualizing Snowflake via Zero Copy).",
+            "tags": ["advertising", "inventory", "products", "search", "data-cloud"]
+        },
+        {
+            "id": "create_campaign",
+            "name": "Create Campaign",
+            "description": "Create a new AdCP v2.3.0 compliant advertising campaign (media buy). Writes to Snowflake and reflects instantly in Data Cloud via Zero Copy. Returns campaign ID and confirmation.",
+            "tags": ["advertising", "campaign", "media-buy", "create", "snowflake"]
+        },
+        {
+            "id": "get_campaign_status",
+            "name": "Get Campaign Status",
+            "description": "Retrieve real-time campaign delivery metrics including impressions delivered, spend, and pacing status. Data source: Salesforce Data Cloud (virtualizing Snowflake).",
+            "tags": ["advertising", "campaign", "metrics", "status", "delivery"]
         }
     ],
-    "url": "https://yahoo-a2a-agent.herokuapp.com/a2a/yahoo_sales_agent",
+    "url": "https://yahoo-a2a-agent-72829d23cce8.herokuapp.com/a2a/yahoo_sales_agent",
     "capabilities": {},
-    "version": "1.0.0"
+    "version": "2.0.0"
 }
-

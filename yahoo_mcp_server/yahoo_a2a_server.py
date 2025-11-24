@@ -11,7 +11,7 @@ Architecture:
 import os
 import json
 import logging
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from pathlib import Path
 
 from fastapi import FastAPI, Request, Response
@@ -20,6 +20,11 @@ import uvicorn
 
 # A2A SDK imports
 from a2a.types import AgentCard, AgentSkill, AgentCapabilities
+
+# Import existing MCP services
+from services.datacloud_query_service import get_datacloud_query_service
+from services.snowflake_write_service import get_snowflake_write_service
+from utils.mock_principal import MockPrincipal
 
 # Setup logging
 logging.basicConfig(
@@ -39,6 +44,19 @@ app = FastAPI(
 AGENT_CARD_PATH = Path(__file__).parent / "yahoo-agent-card.json"
 with open(AGENT_CARD_PATH, 'r') as f:
     AGENT_CARD_DATA = json.load(f)
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+def get_nike_principal() -> MockPrincipal:
+    """Get Nike principal for authentication"""
+    return MockPrincipal(
+        principal_id="nike_principal_001",
+        name="Nike",
+        tenant_id="374df0f3-dab1-450d-871f-fbe9569d3042",  # Yahoo tenant
+        access_level="premium"
+    )
 
 # =============================================================================
 # A2A Skills Implementation
@@ -63,9 +81,219 @@ def skill_echo(task_input: str) -> Dict[str, Any]:
         "skill": "echo"
     }
 
+async def skill_discover_products(task_input: str) -> Dict[str, Any]:
+    """
+    Discover advertising products from Yahoo inventory.
+    
+    **DATA SOURCE: Salesforce Data Cloud (virtualizing Snowflake)**
+    
+    Args:
+        task_input: JSON string with campaign brief and optional budget_range
+                   Example: {"brief": "Display ads for sports", "budget_range": [10000, 50000]}
+        
+    Returns:
+        Dict with products list and metadata
+    """
+    logger.info(f"📦 discover_products skill called")
+    
+    try:
+        # Parse input
+        input_data = json.loads(task_input) if isinstance(task_input, str) else task_input
+        brief = input_data.get("brief", task_input if isinstance(task_input, str) else "")
+        budget_range = input_data.get("budget_range")
+        
+        logger.info(f"   Brief: {brief[:60]}...")
+        logger.info(f"🌩️  Querying Data Cloud (Snowflake)...")
+        
+        # Get services
+        principal = get_nike_principal()
+        query_service = get_datacloud_query_service()
+        
+        # Query products from Data Cloud
+        products_raw = await query_service.query_products(
+            tenant_id=principal.tenant_id,
+            is_active=True
+        )
+        
+        logger.info(f"✅ Found {len(products_raw)} products from Data Cloud")
+        
+        # Apply budget filter if specified
+        if budget_range and isinstance(budget_range, list) and len(budget_range) == 2:
+            min_budget, max_budget = budget_range
+            products_raw = [
+                p for p in products_raw
+                if p.get('minimum_budget', 0) <= max_budget
+            ]
+            logger.info(f"   Filtered to {len(products_raw)} products within budget")
+        
+        # Format products for response
+        products = []
+        for p in products_raw:
+            pricing = p.get('pricing', {})
+            products.append({
+                "product_id": p.get('product_id'),
+                "name": p.get('name'),
+                "description": p.get('description'),
+                "product_type": p.get('product_type'),
+                "pricing": {
+                    "base_cpm": pricing.get('base_cpm', 0),
+                    "original_value": pricing.get('base_cpm', 0),
+                    "discount_percentage": 0,
+                    "currency": pricing.get('currency', 'USD')
+                },
+                "minimum_budget": p.get('minimum_budget', 0),
+                "estimated_reach": p.get('estimated_reach', 0),
+                "estimated_impressions": p.get('estimated_impressions', 0),
+                "formats": p.get('formats', []),
+                "targeting": p.get('targeting', {}),
+                "properties": p.get('properties', [])
+            })
+        
+        return {
+            "status": "success",
+            "skill": "discover_products",
+            "data": {
+                "products": products[:10],  # Limit to 10 for A2A response
+                "total_count": len(products),
+                "brief": brief,
+                "data_source": "Salesforce Data Cloud (Snowflake Zero Copy)"
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error in discover_products: {str(e)}", exc_info=True)
+        return {
+            "status": "error",
+            "skill": "discover_products",
+            "error": str(e)
+        }
+
+async def skill_create_campaign(task_input: str) -> Dict[str, Any]:
+    """
+    Create a new advertising campaign.
+    
+    **DATA DESTINATION: Snowflake (Data Cloud reflects instantly via Zero Copy)**
+    
+    Args:
+        task_input: JSON string with campaign details
+                   Example: {"product_ids": ["prod_123"], "budget": 25000, ...}
+        
+    Returns:
+        Dict with created campaign details
+    """
+    logger.info(f"🎯 create_campaign skill called")
+    
+    try:
+        # Parse input
+        input_data = json.loads(task_input) if isinstance(task_input, str) else task_input
+        
+        logger.info(f"🌩️  Writing to Snowflake...")
+        
+        # Get services
+        principal = get_nike_principal()
+        write_service = get_snowflake_write_service()
+        
+        # Create media buy in Snowflake
+        media_buy_id = await write_service.insert_media_buy(
+            tenant_id=principal.tenant_id,
+            principal_id=principal.principal_id,
+            product_ids=input_data.get("product_ids", []),
+            total_budget=input_data.get("budget", 0),
+            flight_start_date=input_data.get("start_date", "2025-01-01"),
+            flight_end_date=input_data.get("end_date", "2025-03-31"),
+            targeting=input_data.get("targeting", {}),
+            packages=input_data.get("packages", [])
+        )
+        
+        logger.info(f"✅ Created campaign: {media_buy_id}")
+        
+        return {
+            "status": "success",
+            "skill": "create_campaign",
+            "data": {
+                "campaign_id": media_buy_id,
+                "message": "Campaign created successfully in Snowflake",
+                "data_destination": "Snowflake (reflected in Data Cloud via Zero Copy)"
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error in create_campaign: {str(e)}", exc_info=True)
+        return {
+            "status": "error",
+            "skill": "create_campaign",
+            "error": str(e)
+        }
+
+async def skill_get_campaign_status(task_input: str) -> Dict[str, Any]:
+    """
+    Get campaign delivery status and metrics.
+    
+    **DATA SOURCE: Salesforce Data Cloud (virtualizing Snowflake)**
+    
+    Args:
+        task_input: Campaign ID or JSON with campaign_id
+        
+    Returns:
+        Dict with campaign status and delivery metrics
+    """
+    logger.info(f"📊 get_campaign_status skill called")
+    
+    try:
+        # Parse input
+        if isinstance(task_input, str):
+            try:
+                input_data = json.loads(task_input)
+                campaign_id = input_data.get("campaign_id", task_input)
+            except:
+                campaign_id = task_input
+        else:
+            campaign_id = task_input.get("campaign_id", "")
+        
+        logger.info(f"   Campaign ID: {campaign_id}")
+        logger.info(f"🌩️  Querying Data Cloud...")
+        
+        # Get services
+        query_service = get_datacloud_query_service()
+        
+        # Query campaign delivery data
+        delivery_data = await query_service.query_media_buy_delivery(campaign_id)
+        
+        if not delivery_data:
+            return {
+                "status": "error",
+                "skill": "get_campaign_status",
+                "error": f"Campaign {campaign_id} not found"
+            }
+        
+        logger.info(f"✅ Retrieved campaign status")
+        
+        return {
+            "status": "success",
+            "skill": "get_campaign_status",
+            "data": {
+                "campaign_id": campaign_id,
+                "impressions_delivered": delivery_data.get("impressions_delivered", 0),
+                "spend": delivery_data.get("spend", 0),
+                "pacing": delivery_data.get("pacing", {}),
+                "data_source": "Salesforce Data Cloud (Snowflake Zero Copy)"
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"❌ Error in get_campaign_status: {str(e)}", exc_info=True)
+        return {
+            "status": "error",
+            "skill": "get_campaign_status",
+            "error": str(e)
+        }
+
 # Skill registry
 SKILLS = {
     "echo": skill_echo,
+    "discover_products": skill_discover_products,
+    "create_campaign": skill_create_campaign,
+    "get_campaign_status": skill_get_campaign_status,
 }
 
 # =============================================================================
