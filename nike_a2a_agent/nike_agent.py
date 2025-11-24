@@ -168,31 +168,83 @@ async def skill_test_connection(input_data: str) -> Dict[str, Any]:
 
 async def skill_plan_campaign(input_data: str) -> Dict[str, Any]:
     """
-    Plan a campaign (Phase 4 - will integrate Claude)
+    Plan a campaign by discovering Yahoo advertising products
     
-    For now, just echoes back via Yahoo agent
+    This skill calls Yahoo's discover_products skill to find suitable
+    advertising inventory based on the campaign brief.
     
     Args:
-        input_data: Campaign requirements
+        input_data: JSON string with campaign requirements
+                   Example: {"brief": "Nike running shoes Q1 2025", "budget_range": [10000, 50000]}
         
     Returns:
-        Campaign plan
+        Campaign plan with discovered products
     """
-    logger.info(f"📋 Planning campaign: {input_data}")
+    logger.info(f"📋 Planning campaign with input: {input_data}")
     
-    # For Phase 2, just test connectivity
-    # Phase 4 will add Claude orchestration
-    result = await yahoo_client.execute_skill(
-        skill_id="echo",
-        input_data=f"Campaign planning request: {input_data}"
-    )
-    
-    return {
-        "status": "success",
-        "skill": "plan_campaign",
-        "note": "Phase 2: Basic connectivity test. Phase 4 will add Claude orchestration.",
-        "yahoo_response": result
-    }
+    try:
+        # Parse input if it's a string
+        if isinstance(input_data, str):
+            try:
+                campaign_req = json.loads(input_data)
+            except json.JSONDecodeError:
+                # If not JSON, treat as plain text brief
+                campaign_req = {"brief": input_data}
+        else:
+            campaign_req = input_data
+        
+        # Extract campaign parameters
+        brief = campaign_req.get("brief", "")
+        budget_range = campaign_req.get("budget_range", [10000, 100000])
+        
+        logger.info(f"   Brief: {brief}")
+        logger.info(f"   Budget Range: ${budget_range[0]:,} - ${budget_range[1]:,}")
+        
+        # Call Yahoo's discover_products skill
+        logger.info("🔍 Discovering Yahoo advertising products...")
+        discover_input = json.dumps({
+            "brief": brief,
+            "budget_range": budget_range
+        })
+        
+        yahoo_result = await yahoo_client.execute_skill(
+            skill_id="discover_products",
+            input_data=discover_input
+        )
+        
+        # Extract products from Yahoo response
+        products = yahoo_result.get("data", {}).get("products", [])
+        total_count = yahoo_result.get("data", {}).get("total_count", 0)
+        
+        logger.info(f"✅ Found {total_count} suitable products")
+        
+        # Build campaign plan
+        campaign_plan = {
+            "status": "success",
+            "skill": "plan_campaign",
+            "campaign_brief": brief,
+            "budget_range": budget_range,
+            "products_found": total_count,
+            "recommended_products": products[:3],  # Top 3 recommendations
+            "all_products": products,
+            "next_steps": [
+                "Review recommended products",
+                "Select products for campaign",
+                "Call create_campaign skill to execute"
+            ],
+            "data_source": yahoo_result.get("data", {}).get("data_source", "Yahoo A2A Agent")
+        }
+        
+        return campaign_plan
+        
+    except Exception as e:
+        logger.error(f"❌ Error planning campaign: {str(e)}", exc_info=True)
+        return {
+            "status": "error",
+            "skill": "plan_campaign",
+            "error": str(e),
+            "message": "Failed to discover products from Yahoo agent"
+        }
 
 # Skill registry
 SKILLS = {
