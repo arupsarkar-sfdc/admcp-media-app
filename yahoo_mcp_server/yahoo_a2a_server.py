@@ -24,7 +24,16 @@ from a2a.types import AgentCard, AgentSkill, AgentCapabilities
 # Import existing MCP services
 from services.datacloud_query_service import get_datacloud_query_service
 from services.snowflake_write_service import get_snowflake_write_service
-from utils.mock_principal import MockPrincipal
+
+# Define MockPrincipal here (same as in server_http.py)
+class MockPrincipal:
+    """Mock principal for authentication (no database dependency)"""
+    def __init__(self, principal_id: str, name: str, tenant_id: str, access_level: str):
+        self.principal_id = principal_id
+        self.name = name
+        self.tenant_id = tenant_id
+        self.access_level = access_level
+        self.email = f"{name.lower()}@example.com"
 
 # Setup logging
 logging.basicConfig(
