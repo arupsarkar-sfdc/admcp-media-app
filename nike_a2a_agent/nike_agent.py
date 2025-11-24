@@ -385,7 +385,7 @@ if __name__ == "__main__":
     print("="*70 + "\n")
     
     uvicorn.run(
-        app,
+        "nike_agent:app",
         host="0.0.0.0",
         port=port,
         log_level="info"
