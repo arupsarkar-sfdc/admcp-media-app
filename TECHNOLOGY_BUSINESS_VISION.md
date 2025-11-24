@@ -10,7 +10,7 @@
 
 ## Executive Summary
 
-This document presents a paradigm shift in how advertising campaigns are planned, executed, and managed. We've built a cloud-native platform that bridges three critical gaps in modern advertising technology:
+This document presents a shift in how advertising campaigns are planned, executed, and managed. We've built a cloud-native platform that bridges three critical gaps in modern advertising technology:
 
 1. **The Protocol Gap**: Advertising platforms speak different languages. We've implemented two universal protocols (MCP and A2A) that enable seamless communication.
 
