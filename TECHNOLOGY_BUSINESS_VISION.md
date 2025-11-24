@@ -84,24 +84,53 @@ Same scenario with our platform:
 
 ### The Three-Layer Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    LAYER 1: USER INTERFACE                       │
-│  🎨 Salesforce Agentforce | 🖥️  Streamlit Web UI | 📱 Mobile    │
-│                   (Natural Language Input)                       │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                 LAYER 2: INTELLIGENT AGENTS                      │
-│  🤖 MCP Server (Yahoo)  |  🏃 Nike A2A Agent  |  🎯 Yahoo A2A   │
-│         (Protocol Translation & Orchestration)                   │
-└─────────────────────────────────────────────────────────────────┘
-                              ↓
-┌─────────────────────────────────────────────────────────────────┐
-│                   LAYER 3: DATA LAYER                            │
-│  ☁️  Salesforce Data Cloud (Read)  |  ❄️  Snowflake (Write)     │
-│              (Zero Copy Partner - Instant Sync)                  │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+graph TB
+    subgraph Layer1["🎨 LAYER 1: USER INTERFACE"]
+        User[👤 User]
+        Agentforce[Salesforce Agentforce]
+        Streamlit[Streamlit Web UI]
+        Mobile[📱 Mobile App]
+    end
+    
+    subgraph Layer2["🤖 LAYER 2: INTELLIGENT AGENTS"]
+        MCP[MCP Server<br/>Yahoo Platform]
+        NikeAgent[Nike A2A Agent<br/>Orchestrator]
+        YahooAgent[Yahoo A2A Agent<br/>Advertising API]
+    end
+    
+    subgraph Layer3["💾 LAYER 3: DATA LAYER"]
+        DataCloud[☁️ Salesforce Data Cloud<br/>Read Operations]
+        Snowflake[❄️ Snowflake<br/>Write Operations]
+    end
+    
+    User -->|Natural Language| Agentforce
+    User -->|Web Interface| Streamlit
+    User -->|Mobile App| Mobile
+    
+    Agentforce -->|MCP Protocol| MCP
+    Streamlit -->|A2A Protocol| NikeAgent
+    Mobile -->|A2A Protocol| NikeAgent
+    
+    MCP -->|Query| DataCloud
+    MCP -->|Write| Snowflake
+    
+    NikeAgent -->|A2A Protocol| YahooAgent
+    YahooAgent -->|Query| DataCloud
+    YahooAgent -->|Write| Snowflake
+    
+    DataCloud <-->|Zero Copy<br/>Instant Sync| Snowflake
+    
+    style Layer1 fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
+    style Layer2 fill:#fff3e0,stroke:#f57c00,stroke-width:3px
+    style Layer3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    
+    style Agentforce fill:#4fc3f7,stroke:#01579b,stroke-width:2px
+    style MCP fill:#ffb74d,stroke:#e65100,stroke-width:2px
+    style NikeAgent fill:#ffb74d,stroke:#e65100,stroke-width:2px
+    style YahooAgent fill:#ffb74d,stroke:#e65100,stroke-width:2px
+    style DataCloud fill:#ba68c8,stroke:#4a148c,stroke-width:2px
+    style Snowflake fill:#ba68c8,stroke:#4a148c,stroke-width:2px
 ```
 
 ### Technology Components
@@ -264,38 +293,41 @@ Same scenario with our platform:
 
 ### Diagram 1: MCP Protocol - Campaign Discovery
 
-```
-User          Agentforce    MCP Server    Data Cloud    Snowflake
- │                │             │             │             │
- │ 1. "Show me   │             │             │             │
- │    Yahoo ads" │             │             │             │
- │───────────────>│             │             │             │
- │                │             │             │             │
- │                │ 2. MCP      │             │             │
- │                │    Request  │             │             │
- │                │────────────>│             │             │
- │                │             │             │             │
- │                │             │ 3. SQL      │             │
- │                │             │    Query    │             │
- │                │             │────────────>│             │
- │                │             │             │             │
- │                │             │             │ 4. Zero     │
- │                │             │             │    Copy     │
- │                │             │             │    Read     │
- │                │             │             │<───────────>│
- │                │             │             │             │
- │                │             │ 5. Product  │             │
- │                │             │    Data     │             │
- │                │             │<────────────│             │
- │                │             │             │             │
- │                │ 6. MCP      │             │             │
- │                │    Response │             │             │
- │                │<────────────│             │             │
- │                │             │             │             │
- │ 7. Natural     │             │             │             │
- │    Language    │             │             │             │
- │<───────────────│             │             │             │
- │                │             │             │             │
+```mermaid
+sequenceDiagram
+    participant User
+    participant Agentforce as Salesforce Agentforce
+    participant MCP as MCP Server (Yahoo)
+    participant DataCloud as Data Cloud Query Service
+    participant Snowflake as Snowflake (Zero Copy)
+    
+    User->>Agentforce: 1. "Show me Yahoo ads for Nike running shoes"
+    Note over User,Agentforce: Natural language input
+    
+    Agentforce->>MCP: 2. MCP Request (JSON-RPC 2.0)
+    Note over Agentforce,MCP: {"method": "tools/call",<br/>"params": {"name": "query_products"}}
+    
+    MCP->>DataCloud: 3. SQL Query
+    Note over MCP,DataCloud: SELECT * FROM products<br/>WHERE is_active = TRUE
+    
+    DataCloud->>Snowflake: 4. Zero Copy Read
+    Note over DataCloud,Snowflake: Virtual query execution<br/>No data movement
+    
+    Snowflake-->>DataCloud: 5. Product Data (5 products)
+    Note over Snowflake,DataCloud: Pricing, targeting, reach estimates
+    
+    DataCloud-->>MCP: 6. Query Results
+    Note over DataCloud,MCP: JSON response with product catalog
+    
+    MCP-->>Agentforce: 7. MCP Response
+    Note over MCP,Agentforce: Formatted for AI consumption
+    
+    Agentforce-->>User: 8. Natural Language Summary
+    Note over Agentforce,User: "Found 5 Yahoo products:<br/>Yahoo Sports Video ($18.50 CPM)..."
+    
+    rect rgb(200, 220, 250)
+        Note over User,Snowflake: ⏱️ Total Time: 2.5 seconds<br/>📊 Data Source: Data Cloud (Snowflake Zero Copy)<br/>✅ Result: Real-time inventory access
+    end
 ```
 
 **Step-by-Step Explanation**:
@@ -338,59 +370,57 @@ User          Agentforce    MCP Server    Data Cloud    Snowflake
 
 ### Diagram 2: A2A Protocol - Multi-Agent Campaign Planning
 
-```
-User      Nike Agent    Yahoo Agent   Data Cloud   Snowflake
- │            │              │             │            │
- │ 1. "Plan  │              │             │            │
- │    Nike    │              │             │            │
- │    campaign"│             │             │            │
- │───────────>│              │             │            │
- │            │              │             │            │
- │            │ 2. A2A Call  │             │            │
- │            │    (discover_│             │            │
- │            │     products)│             │            │
- │            │─────────────>│             │            │
- │            │              │             │            │
- │            │              │ 3. Query    │            │
- │            │              │    Products │            │
- │            │              │────────────>│            │
- │            │              │             │            │
- │            │              │             │ 4. Zero    │
- │            │              │             │    Copy    │
- │            │              │             │<──────────>│
- │            │              │             │            │
- │            │              │ 5. Products │            │
- │            │              │<────────────│            │
- │            │              │             │            │
- │            │ 6. A2A       │             │            │
- │            │    Response  │             │            │
- │            │<─────────────│             │            │
- │            │              │             │            │
- │            │ 7. A2A Call  │             │            │
- │            │    (create_  │             │            │
- │            │     campaign)│             │            │
- │            │─────────────>│             │            │
- │            │              │             │            │
- │            │              │             │ 8. INSERT  │
- │            │              │             │    Campaign│
- │            │              │             │───────────>│
- │            │              │             │            │
- │            │              │             │ 9. Zero    │
- │            │              │             │    Copy    │
- │            │              │             │<──────────>│
- │            │              │             │            │
- │            │              │ 10. Campaign│            │
- │            │              │     ID      │            │
- │            │              │<────────────│            │
- │            │              │             │            │
- │            │ 11. A2A      │             │            │
- │            │     Response │             │            │
- │            │<─────────────│             │            │
- │            │              │             │            │
- │ 12. "Campaign             │             │            │
- │     created!" │            │             │            │
- │<───────────│              │             │            │
- │            │              │             │            │
+```mermaid
+sequenceDiagram
+    participant User
+    participant Nike as Nike A2A Agent
+    participant Yahoo as Yahoo A2A Agent
+    participant DataCloud as Data Cloud
+    participant Snowflake
+    
+    User->>Nike: 1. "Plan Nike campaign for Q1 2025"
+    Note over User,Nike: Natural language request
+    
+    Nike->>Yahoo: 2. A2A Call: discover_products
+    Note over Nike,Yahoo: JSON-RPC 2.0 over HTTPS<br/>{"skill_id": "discover_products",<br/>"input": {"brief": "Nike running shoes"}}
+    
+    Yahoo->>DataCloud: 3. Query Products
+    Note over Yahoo,DataCloud: SELECT * FROM products<br/>Filter by budget & targeting
+    
+    DataCloud->>Snowflake: 4. Zero Copy Read
+    Note over DataCloud,Snowflake: Virtual query execution
+    
+    Snowflake-->>DataCloud: 5. Product Data
+    DataCloud-->>Yahoo: 6. Query Results (5 products)
+    
+    Yahoo-->>Nike: 7. A2A Response
+    Note over Yahoo,Nike: Products with pricing,<br/>reach, targeting
+    
+    rect rgb(255, 250, 200)
+        Note over Nike: Nike Agent analyzes products<br/>Recommends top 3 options
+    end
+    
+    Nike->>Yahoo: 8. A2A Call: create_campaign
+    Note over Nike,Yahoo: {"skill_id": "create_campaign",<br/>"input": {"campaign_name": "Nike Running Q1"}}
+    
+    Yahoo->>Snowflake: 9. INSERT Campaign
+    Note over Yahoo,Snowflake: AdCP v2.3.0 compliant<br/>media_buys + packages
+    
+    Snowflake->>DataCloud: 10. Zero Copy Sync (Instant)
+    Note over Snowflake,DataCloud: Campaign visible in Data Cloud<br/>No ETL lag
+    
+    Snowflake-->>Yahoo: 11. Campaign ID
+    Note over Snowflake,Yahoo: nike_running_q1_2025_20251124_154332
+    
+    Yahoo-->>Nike: 12. A2A Response
+    Note over Yahoo,Nike: Campaign created successfully
+    
+    Nike-->>User: 13. "✅ Campaign created!"
+    Note over Nike,User: Campaign ID: nike_running_q1_2025_20251124_154332<br/>Ready for delivery tracking
+    
+    rect rgb(200, 250, 220)
+        Note over User,Snowflake: ⏱️ Total Time: ~11 seconds<br/>🔗 Communication: Nike ↔ Yahoo (A2A)<br/>✅ Result: End-to-end campaign automation
+    end
 ```
 
 **Step-by-Step Explanation**:
