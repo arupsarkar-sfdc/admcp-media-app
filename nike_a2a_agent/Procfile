@@ -1,3 +1,4 @@
-# Heroku Procfile for Nike A2A Campaign Agent
+# Heroku Procfile for A2A Demo Streamlit App
 
-web: python nike_agent.py
+web: streamlit run a2a_demo_app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true
+
