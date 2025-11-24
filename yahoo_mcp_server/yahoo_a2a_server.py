@@ -138,7 +138,38 @@ async def skill_discover_products(task_input: str) -> Dict[str, Any]:
         # Format products for response
         products = []
         for p in products_raw:
+            # Parse pricing if it's a JSON string
             pricing = p.get('pricing', {})
+            if isinstance(pricing, str):
+                try:
+                    pricing = json.loads(pricing)
+                except:
+                    pricing = {}
+            
+            # Parse targeting if it's a JSON string
+            targeting = p.get('targeting', {})
+            if isinstance(targeting, str):
+                try:
+                    targeting = json.loads(targeting)
+                except:
+                    targeting = {}
+            
+            # Parse formats if it's a JSON string
+            formats = p.get('formats', [])
+            if isinstance(formats, str):
+                try:
+                    formats = json.loads(formats)
+                except:
+                    formats = []
+            
+            # Parse properties if it's a JSON string
+            properties = p.get('properties', [])
+            if isinstance(properties, str):
+                try:
+                    properties = json.loads(properties)
+                except:
+                    properties = []
+            
             products.append({
                 "product_id": p.get('product_id'),
                 "name": p.get('name'),
@@ -153,9 +184,9 @@ async def skill_discover_products(task_input: str) -> Dict[str, Any]:
                 "minimum_budget": p.get('minimum_budget', 0),
                 "estimated_reach": p.get('estimated_reach', 0),
                 "estimated_impressions": p.get('estimated_impressions', 0),
-                "formats": p.get('formats', []),
-                "targeting": p.get('targeting', {}),
-                "properties": p.get('properties', [])
+                "formats": formats,
+                "targeting": targeting,
+                "properties": properties
             })
         
         return {
