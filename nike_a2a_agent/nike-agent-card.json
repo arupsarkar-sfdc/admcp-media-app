@@ -7,8 +7,8 @@
         {
             "id": "plan_campaign",
             "name": "Plan Campaign",
-            "description": "Plan an advertising campaign based on business objectives. Delegates to Yahoo Sales Agent for product discovery and campaign creation.",
-            "tags": ["campaign", "planning", "orchestration"]
+            "description": "Plan an advertising campaign by discovering Yahoo products based on campaign brief and budget. Returns recommended products with pricing, targeting, and reach estimates. Input: {\"brief\": \"campaign description\", \"budget_range\": [min, max]}",
+            "tags": ["campaign", "planning", "orchestration", "discovery"]
         },
         {
             "id": "test_connection",
