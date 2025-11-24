@@ -32,7 +32,7 @@ YAHOO_AGENT_URL = os.getenv(
 
 # Page config
 st.set_page_config(
-    page_title="A2A Communication Demo",
+    page_title="A2A Communication",
     page_icon="🔄",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -169,7 +169,7 @@ def log_communication(source: str, target: str, request: dict, response: dict):
     })
 
 # Header
-st.title("🔄 A2A Agent Communication Demo")
+st.title("🔄 A2A Agent Communication App")
 st.markdown("**Real-time visualization of Agent-to-Agent (A2A) protocol communication**")
 
 # Sidebar
