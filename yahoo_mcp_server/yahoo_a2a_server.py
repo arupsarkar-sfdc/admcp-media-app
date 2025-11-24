@@ -216,7 +216,7 @@ async def skill_create_campaign(task_input: str) -> Dict[str, Any]:
     
     Args:
         task_input: JSON string with campaign details
-                   Example: {"product_ids": ["prod_123"], "budget": 25000, ...}
+                   Example: {"product_ids": ["prod_123"], "budget": 25000, "campaign_name": "Nike Q1", ...}
         
     Returns:
         Dict with created campaign details
@@ -233,25 +233,39 @@ async def skill_create_campaign(task_input: str) -> Dict[str, Any]:
         principal = get_nike_principal()
         write_service = get_snowflake_write_service()
         
+        # Extract campaign name from input or generate default
+        campaign_name = input_data.get("campaign_name", "Nike Campaign")
+        
         # Create media buy in Snowflake
-        media_buy_id = await write_service.insert_media_buy(
+        media_buy_id = write_service.insert_media_buy(
             tenant_id=principal.tenant_id,
             principal_id=principal.principal_id,
-            product_ids=input_data.get("product_ids", []),
+            campaign_name=campaign_name,
             total_budget=input_data.get("budget", 0),
+            currency=input_data.get("currency", "USD"),
             flight_start_date=input_data.get("start_date", "2025-01-01"),
-            flight_end_date=input_data.get("end_date", "2025-03-31"),
-            targeting=input_data.get("targeting", {}),
-            packages=input_data.get("packages", [])
+            flight_end_date=input_data.get("end_date", "2025-03-31")
         )
         
         logger.info(f"✅ Created campaign: {media_buy_id}")
+        
+        # Insert packages if provided
+        packages = input_data.get("packages", [])
+        package_ids = []
+        for pkg in packages:
+            pkg_id = write_service.insert_package(
+                media_buy_id=media_buy_id,
+                package=pkg
+            )
+            package_ids.append(pkg_id)
         
         return {
             "status": "success",
             "skill": "create_campaign",
             "data": {
                 "campaign_id": media_buy_id,
+                "campaign_name": campaign_name,
+                "packages_created": len(package_ids),
                 "message": "Campaign created successfully in Snowflake",
                 "data_destination": "Snowflake (reflected in Data Cloud via Zero Copy)"
             }
