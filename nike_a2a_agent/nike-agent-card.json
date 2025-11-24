@@ -1,0 +1,24 @@
+{
+    "name": "nike_campaign_agent",
+    "description": "Nike Campaign Planning Agent - Orchestrates advertising campaigns by delegating to Yahoo Sales Agent for inventory discovery and campaign creation.",
+    "defaultInputModes": ["text/plain"],
+    "defaultOutputModes": ["application/json"],
+    "skills": [
+        {
+            "id": "plan_campaign",
+            "name": "Plan Campaign",
+            "description": "Plan an advertising campaign based on business objectives. Delegates to Yahoo Sales Agent for product discovery and campaign creation.",
+            "tags": ["campaign", "planning", "orchestration"]
+        },
+        {
+            "id": "test_connection",
+            "name": "Test Connection",
+            "description": "Test A2A connectivity with Yahoo Sales Agent using echo skill.",
+            "tags": ["test", "connectivity"]
+        }
+    ],
+    "url": "https://nike-a2a-campaign-agent.herokuapp.com/a2a/nike_campaign_agent",
+    "capabilities": {},
+    "version": "1.0.0"
+}
+
