@@ -4,4 +4,5 @@ httpx>=0.25.0
 python-dotenv>=1.0.0
 a2a-sdk==0.2.16
 anthropic>=0.18.0
+streamlit>=1.28.0
 
