@@ -1175,7 +1175,7 @@ We're at an inflection point in advertising technology. The question is not whet
 
 We've built the foundation. The protocols are proven. The architecture is scalable. The business value is clear.
 
-**The future of advertising is agent-driven. And we're leading the way.**
+**The future of advertising is agent-driven with human in the loop**
 
 ---
 
