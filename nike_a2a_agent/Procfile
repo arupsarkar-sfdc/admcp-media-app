@@ -1,0 +1,4 @@
+# Heroku Procfile for Nike A2A Campaign Agent
+
+web: python nike_agent.py
+
