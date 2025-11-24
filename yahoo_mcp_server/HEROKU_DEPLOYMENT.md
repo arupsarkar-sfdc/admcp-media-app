@@ -10,6 +10,10 @@
 - **Region**: US (us)
 - **Owner**: arup.sarkar@salesforce.com
 
+**View Apps in Heroku Dashboard:**
+- **Dashboard**: https://dashboard.heroku.com/apps (once authenticated)
+- View both **yahoo-mcp-server** (MCP Server) and **adcp-campaign-planner** (Streamlit Client)
+
 ---
 
 ## ✅ Prerequisites

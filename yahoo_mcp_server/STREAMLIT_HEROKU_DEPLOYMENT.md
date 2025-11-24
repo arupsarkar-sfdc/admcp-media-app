@@ -28,48 +28,74 @@ This will create a new app and give you a URL like:
 
 ---
 
-### **Step 2: Set up the Procfile for Streamlit**
+### **Step 2: Deploy using the deployment script (Recommended - Safest)**
 
-The current `Procfile` is for the MCP server. We need to use `Procfile.streamlit` for the Streamlit app.
-
-**Option A: Deploy using git subtree (Recommended)**
-
-This keeps your main repo clean and deploys only what's needed:
+**⚠️ IMPORTANT:** The `Procfile` in your repo is for the MCP server (`web: python server_http.py`). We'll use a deployment script that safely swaps it during deployment and restores it afterward.
 
 ```bash
 # From yahoo_mcp_server directory
 cd /Users/arup.sarkar/Projects/Salesforce/admcp-media-app/yahoo_mcp_server
 
-# Copy Procfile.streamlit to Procfile temporarily
-cp Procfile.streamlit Procfile.streamlit.backup
+# Make the deployment script executable
+chmod +x deploy_streamlit.sh
 
-# Add Streamlit Procfile
-cp Procfile.streamlit Procfile
-
-# Commit the change
-git add Procfile
-git commit -m "Add Streamlit Procfile for Heroku deployment"
-
-# Add Heroku remote for Streamlit app
-heroku git:remote -a adcp-campaign-planner
-
-# Push to Heroku
-git push heroku main
+# Run the deployment script
+./deploy_streamlit.sh
 ```
 
-**Option B: Use git subtree (Alternative - cleaner separation)**
+This script will:
+1. ✅ Backup your MCP server Procfile
+2. ✅ Swap to Streamlit Procfile
+3. ✅ Deploy to Heroku
+4. ✅ Restore the MCP server Procfile
+5. ✅ Keep your repo clean
+
+---
+
+### **Step 2 Alternative: Manual Deployment (If you prefer)**
+
+If you want to do it manually:
 
 ```bash
-# From project root
-cd /Users/arup.sarkar/Projects/Salesforce/admcp-media-app
+# From yahoo_mcp_server directory
+cd /Users/arup.sarkar/Projects/Salesforce/admcp-media-app/yahoo_mcp_server
 
-# Deploy yahoo_mcp_server subdirectory to Heroku
-git subtree push --prefix yahoo_mcp_server heroku-streamlit main
+# 1. Backup MCP Procfile
+cp Procfile Procfile.mcp.backup
+
+# 2. Swap to Streamlit Procfile
+cp Procfile.streamlit Procfile
+
+# 3. Commit (if needed)
+git add Procfile streamlit_app.py requirements.txt
+git commit -m "Deploy Streamlit app" || echo "No changes"
+
+# 4. Add Heroku remote for Streamlit app
+heroku git:remote -a adcp-campaign-planner
+
+# 5. Deploy
+git push heroku main
+
+# 6. IMPORTANT: Restore MCP Procfile immediately!
+cp Procfile.mcp.backup Procfile
+git checkout -- Procfile  # Restore in git
+rm Procfile.mcp.backup
 ```
 
-But first, you need to:
-1. Rename `Procfile.streamlit` to `Procfile` in the subdirectory
-2. Add Heroku remote: `heroku git:remote -a adcp-campaign-planner -r heroku-streamlit`
+**⚠️ Don't forget step 6!** Otherwise your next MCP server deployment will fail.
+
+---
+
+### **Step 2 Alternative: Deploy from `mcp-client` branch**
+
+If you are working on the `mcp-client` branch, use this command to deploy to Heroku (which always builds from `main`):
+
+```bash
+cd /Users/arup.sarkar/Projects/Salesforce/admcp-media-app
+
+# Push yahoo_mcp_server subtree to Heroku's main branch
+git subtree push --prefix yahoo_mcp_server heroku-streamlit main
+```
 
 ---
 
@@ -106,18 +132,34 @@ heroku open -a adcp-campaign-planner
 
 After making changes to `streamlit_app.py`:
 
+**Option 1: Use the deployment script (Recommended)**
+```bash
+cd /Users/arup.sarkar/Projects/Salesforce/admcp-media-app/yahoo_mcp_server
+./deploy_streamlit.sh
+```
+
+**Option 2: Manual update**
 ```bash
 cd /Users/arup.sarkar/Projects/Salesforce/admcp-media-app/yahoo_mcp_server
 
-# Make sure Procfile.streamlit is copied to Procfile
+# Backup MCP Procfile
+cp Procfile Procfile.mcp.backup
+
+# Swap to Streamlit Procfile
 cp Procfile.streamlit Procfile
 
 # Commit changes
-git add streamlit_app.py Procfile
+git add streamlit_app.py Procfile requirements.txt
 git commit -m "Update Streamlit app"
 
-# Push to Heroku
+# Push to Heroku (Streamlit app)
+heroku git:remote -a adcp-campaign-planner
 git push heroku main
+
+# IMPORTANT: Restore MCP Procfile!
+cp Procfile.mcp.backup Procfile
+git checkout -- Procfile
+rm Procfile.mcp.backup
 ```
 
 ---

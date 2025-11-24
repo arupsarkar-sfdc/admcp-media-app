@@ -1,0 +1,4 @@
+# Heroku Procfile for A2A Demo Streamlit App
+
+web: streamlit run a2a_demo_app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true
+
