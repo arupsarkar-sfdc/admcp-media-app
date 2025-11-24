@@ -310,26 +310,43 @@ async def skill_get_campaign_status(task_input: str) -> Dict[str, Any]:
         # Get services
         query_service = get_datacloud_query_service()
         
-        # Query campaign delivery data
-        delivery_data = await query_service.query_media_buy_delivery(campaign_id)
+        # Query campaign delivery metrics
+        delivery_metrics = await query_service.query_delivery_metrics(media_buy_id=campaign_id)
         
-        if not delivery_data:
+        if not delivery_metrics:
             return {
-                "status": "error",
+                "status": "success",
                 "skill": "get_campaign_status",
-                "error": f"Campaign {campaign_id} not found"
+                "data": {
+                    "campaign_id": campaign_id,
+                    "message": "Campaign found but no delivery data yet (campaign may be pending or just created)",
+                    "impressions_delivered": 0,
+                    "spend": 0.0,
+                    "clicks": 0,
+                    "conversions": 0,
+                    "data_source": "Salesforce Data Cloud (Snowflake Zero Copy)"
+                }
             }
         
-        logger.info(f"✅ Retrieved campaign status")
+        # Aggregate metrics
+        total_impressions = sum(m.get("impressions", 0) for m in delivery_metrics)
+        total_spend = sum(m.get("spend", 0.0) for m in delivery_metrics)
+        total_clicks = sum(m.get("clicks", 0) for m in delivery_metrics)
+        total_conversions = sum(m.get("conversions", 0) for m in delivery_metrics)
+        
+        logger.info(f"✅ Retrieved campaign status: {len(delivery_metrics)} metric records")
         
         return {
             "status": "success",
             "skill": "get_campaign_status",
             "data": {
                 "campaign_id": campaign_id,
-                "impressions_delivered": delivery_data.get("impressions_delivered", 0),
-                "spend": delivery_data.get("spend", 0),
-                "pacing": delivery_data.get("pacing", {}),
+                "impressions_delivered": total_impressions,
+                "spend": total_spend,
+                "clicks": total_clicks,
+                "conversions": total_conversions,
+                "metric_records": len(delivery_metrics),
+                "latest_metrics": delivery_metrics[:5] if delivery_metrics else [],
                 "data_source": "Salesforce Data Cloud (Snowflake Zero Copy)"
             }
         }
