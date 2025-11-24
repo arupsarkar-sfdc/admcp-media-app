@@ -1,2 +1,5 @@
-web: streamlit run streamlit_app.py --server.port=$PORT --server.address=0.0.0.0 --server.headless=true
+# Heroku Procfile for Yahoo A2A Sales Agent
+# This runs the A2A server (not the MCP server)
+
+web: python yahoo_a2a_server.py
 
