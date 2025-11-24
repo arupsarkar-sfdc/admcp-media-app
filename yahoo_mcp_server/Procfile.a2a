@@ -1,0 +1,5 @@
+# Heroku Procfile for Yahoo A2A Sales Agent
+# This runs the A2A server (not the MCP server)
+
+web: python yahoo_a2a_server.py
+
