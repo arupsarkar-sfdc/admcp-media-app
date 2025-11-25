@@ -121,16 +121,16 @@ graph TB
     
     DataCloud <-->|Zero Copy<br/>Instant Sync| Snowflake
     
-    style Layer1 fill:#e3f2fd,stroke:#1976d2,stroke-width:3px
-    style Layer2 fill:#fff3e0,stroke:#f57c00,stroke-width:3px
-    style Layer3 fill:#f3e5f5,stroke:#7b1fa2,stroke-width:3px
+    style Layer1 fill:#1976d2,stroke:#1565c0,stroke-width:3px,color:#fff
+    style Layer2 fill:#f57c00,stroke:#e65100,stroke-width:3px,color:#fff
+    style Layer3 fill:#7b1fa2,stroke:#6a1b9a,stroke-width:3px,color:#fff
     
-    style Agentforce fill:#4fc3f7,stroke:#01579b,stroke-width:2px
-    style MCP fill:#ffb74d,stroke:#e65100,stroke-width:2px
-    style NikeAgent fill:#ffb74d,stroke:#e65100,stroke-width:2px
-    style YahooAgent fill:#ffb74d,stroke:#e65100,stroke-width:2px
-    style DataCloud fill:#ba68c8,stroke:#4a148c,stroke-width:2px
-    style Snowflake fill:#ba68c8,stroke:#4a148c,stroke-width:2px
+    style Agentforce fill:#42a5f5,stroke:#1976d2,stroke-width:2px,color:#fff
+    style MCP fill:#ff9800,stroke:#f57c00,stroke-width:2px,color:#fff
+    style NikeAgent fill:#ff9800,stroke:#f57c00,stroke-width:2px,color:#fff
+    style YahooAgent fill:#ff9800,stroke:#f57c00,stroke-width:2px,color:#fff
+    style DataCloud fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
+    style Snowflake fill:#9c27b0,stroke:#7b1fa2,stroke-width:2px,color:#fff
 ```
 
 ### Technology Components
@@ -325,9 +325,7 @@ sequenceDiagram
     Agentforce-->>User: 8. Natural Language Summary
     Note over Agentforce,User: "Found 5 Yahoo products:<br/>Yahoo Sports Video ($18.50 CPM)..."
     
-    rect rgb(200, 220, 250)
-        Note over User,Snowflake: ⏱️ Total Time: 2.5 seconds<br/>📊 Data Source: Data Cloud (Snowflake Zero Copy)<br/>✅ Result: Real-time inventory access
-    end
+    Note over User,Snowflake: ⏱️ Total Time: 2.5 seconds<br/>📊 Data Source: Data Cloud (Snowflake Zero Copy)<br/>✅ Result: Real-time inventory access
 ```
 
 **Step-by-Step Explanation**:
@@ -396,9 +394,7 @@ sequenceDiagram
     Yahoo-->>Nike: 7. A2A Response
     Note over Yahoo,Nike: Products with pricing,<br/>reach, targeting
     
-    rect rgb(255, 250, 200)
-        Note over Nike: Nike Agent analyzes products<br/>Recommends top 3 options
-    end
+    Note over Nike: Nike Agent analyzes products<br/>Recommends top 3 options
     
     Nike->>Yahoo: 8. A2A Call: create_campaign
     Note over Nike,Yahoo: {"skill_id": "create_campaign",<br/>"input": {"campaign_name": "Nike Running Q1"}}
@@ -418,9 +414,7 @@ sequenceDiagram
     Nike-->>User: 13. "✅ Campaign created!"
     Note over Nike,User: Campaign ID: nike_running_q1_2025_20251124_154332<br/>Ready for delivery tracking
     
-    rect rgb(200, 250, 220)
-        Note over User,Snowflake: ⏱️ Total Time: ~11 seconds<br/>🔗 Communication: Nike ↔ Yahoo (A2A)<br/>✅ Result: End-to-end campaign automation
-    end
+    Note over User,Snowflake: ⏱️ Total Time: ~11 seconds<br/>🔗 Communication: Nike ↔ Yahoo (A2A)<br/>✅ Result: End-to-end campaign automation
 ```
 
 **Step-by-Step Explanation**:
@@ -1204,7 +1198,7 @@ We've built the foundation. The protocols are proven. The architecture is scalab
 
 1. **MCP Specification**: https://modelcontextprotocol.io/
 2. **A2A Protocol**: https://github.com/google/a2a-sdk
-3. **AdCP Specification**: https://github.com/IABTechLab/adcp
+3. **AdCP Specification**: hhttps://github.com/adcontextprotocol/adcp
 4. **Salesforce Data Cloud**: https://www.salesforce.com/data-cloud/
 5. **Snowflake Zero Copy**: https://docs.snowflake.com/en/user-guide/data-share-partners
 
