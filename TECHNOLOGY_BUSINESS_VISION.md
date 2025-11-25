@@ -1198,7 +1198,7 @@ We've built the foundation. The protocols are proven. The architecture is scalab
 
 1. **MCP Specification**: https://modelcontextprotocol.io/
 2. **A2A Protocol**: https://github.com/google/a2a-sdk
-3. **AdCP Specification**: hhttps://github.com/adcontextprotocol/adcp
+3. **AdCP Specification**: https://github.com/adcontextprotocol/adcp
 4. **Salesforce Data Cloud**: https://www.salesforce.com/data-cloud/
 5. **Snowflake Zero Copy**: https://docs.snowflake.com/en/user-guide/data-share-partners
 
