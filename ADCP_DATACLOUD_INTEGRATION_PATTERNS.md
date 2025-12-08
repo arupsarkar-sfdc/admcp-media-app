@@ -290,3 +290,37 @@ flowchart LR
 | **DSP** | Demand-Side Platform |
 | **SSP** | Supply-Side Platform |
 | **Cohort IDs** | Privacy-safe identifiers representing groups of users rather than individuals |
+
+---
+
+## References & Resources
+
+### Official Protocol Documentation
+
+| Resource | Description | Link |
+|----------|-------------|------|
+| **AdCP Official Site** | The open standard for agentic advertising – "From brief to buy, helping agents advertise anywhere" | [adcontextprotocol.org](https://adcontextprotocol.org/) |
+| **Google Ads MCP Server** | Official Google Ads MCP implementation enabling AI agents to interact with Google Ads API | [github.com/googleads/google-ads-mcp](https://github.com/googleads/google-ads-mcp) |
+
+### Video Resources
+
+| Resource | Description | Link |
+|----------|-------------|------|
+| **AdCP Introduction** | Video overview of the Advertising Context Protocol | [YouTube](https://youtu.be/QWmxvVS1RA8) |
+
+### AdCP Protocol Capabilities
+
+Based on the [official AdCP specification](https://adcontextprotocol.org/), the protocol provides:
+
+- **🛒 Media Buy Protocol** – Complete campaign lifecycle management (`get_products`, `create_media_buy`, `get_media_buy_delivery`)
+- **🎨 Creative Protocol** – AI-powered creative generation (`build_creative`, `preview_creative`, `list_creative_formats`)
+- **📊 Signals Protocol** – First-party data integration (`get_signals`, `activate_signal`)
+- **⚡ Protocol Features** – MCP & A2A support, async workflows, human-in-the-loop approval
+
+### Founding Members
+
+AdCP is backed by industry leaders including: Ebiquity, Optable, PubMatic, Scope3, Swivel, Triton Digital, and Yahoo.
+
+---
+
+*This document describes integration patterns for Salesforce Data Cloud with the AdCP ecosystem. For the latest protocol specifications, visit [adcontextprotocol.org](https://adcontextprotocol.org/).*
