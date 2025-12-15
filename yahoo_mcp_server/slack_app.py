@@ -96,18 +96,19 @@ def check_environment():
 
 def determine_mode():
     """Determine whether to run in Socket Mode or HTTP Mode"""
+    # Check for Socket Mode token FIRST - this takes priority
+    app_token = os.getenv("SLACK_APP_TOKEN")
+    
     # Check for Heroku's PORT environment variable
     port = os.getenv("PORT")
     
-    # Check for Socket Mode token
-    app_token = os.getenv("SLACK_APP_TOKEN")
-    
-    if port:
-        # Running on Heroku or similar - use HTTP mode
+    # If we have an app token, ALWAYS use Socket Mode
+    # Socket Mode is simpler and works everywhere (local + Heroku)
+    if app_token:
+        return "socket", int(port) if port else None
+    elif port:
+        # No app token but has PORT - use HTTP mode
         return "http", int(port)
-    elif app_token:
-        # Has app token - can use Socket Mode
-        return "socket", None
     else:
         # Default to HTTP mode on port 3000
         return "http", 3000
