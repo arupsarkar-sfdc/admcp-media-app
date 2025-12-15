@@ -306,6 +306,520 @@ slack_app.py          # Entry point (HTTP + Socket Mode)
 
 ---
 
+## Enterprise Scale: 100 Account Directors
+
+Real scenario: Yahoo has 100 account directors (ADs) who live in Slack but need to create opportunities and campaigns in their CRM (Salesforce). How does this work?
+
+### The Reality
+
+Account directors don't want to learn new systems. They already:
+- Chat with clients in Slack
+- Coordinate with creative teams in Slack
+- Get notifications in Slack
+
+But the business requires:
+- Opportunities tracked in CRM
+- Campaigns with proper approval chains
+- Audit trails for compliance
+
+### Unified Architecture: Slack ↔ CRM + Campaign Integration
+
+**Color Legend:**
+| Color | Role |
+|-------|------|
+| 🟣 Purple | Slack Layer (100 Account Directors) |
+| 🔵 Blue | Bot & AI Layer (Claude Agent) |
+| 🟠 Orange | MCP Servers (Protocol Layer) |
+| 🟢 Green | Data Systems (Snowflake, CRM, Data Cloud) |
+
+```mermaid
+flowchart TB
+    subgraph SLACK ["🟣 SLACK WORKSPACE — 100 Account Directors"]
+        direction LR
+        AD_SPORTS["👤 AD: Sports<br/>─────────────<br/>Nike, Adidas"]
+        AD_ENT["👤 AD: Entertainment<br/>─────────────<br/>Netflix, Disney"]
+        AD_NEWS["👤 AD: News<br/>─────────────<br/>CNN, BBC"]
+        AD_MORE["👤 AD: ... (x97)<br/>─────────────<br/>All Verticals"]
+    end
+
+    subgraph BOT ["🔵 SLACK BOT + CLAUDE AI"]
+        BOLT["Slack Bolt<br/>Event Handler"]
+        AGENT["Claude Agent<br/>───────────────<br/>Intent Detection<br/>Tool Orchestration"]
+        MCP_CLIENT["MCP Client<br/>───────────────<br/>JSON-RPC 2.0"]
+        
+        BOLT --> AGENT
+        AGENT --> MCP_CLIENT
+    end
+
+    subgraph MCP_SERVERS ["🟠 MCP SERVERS (AdCP Protocol)"]
+        direction LR
+        YAHOO_MCP["Yahoo MCP Server<br/>───────────────<br/>📦 get_products<br/>📝 create_media_buy<br/>📊 get_delivery"]
+        CRM_MCP["Salesforce MCP Server<br/>───────────────<br/>💼 create_opportunity<br/>🔄 update_opportunity<br/>✅ submit_approval<br/>👍 approve_record"]
+    end
+
+    subgraph DATA ["🟢 DATA SYSTEMS"]
+        subgraph SNOW_BOX ["❄️ SNOWFLAKE"]
+            SNOW["Campaign Tables<br/>───────────────<br/>media_buys<br/>packages<br/>delivery_metrics"]
+        end
+        
+        subgraph CRM_BOX ["☁️ SALESFORCE CRM"]
+            OPP["Opportunities<br/>───────────────<br/>Amount, Stage<br/>Campaign Links"]
+            APPR["Approval Process<br/>───────────────<br/>VP Approval<br/>Finance Review"]
+        end
+        
+        subgraph DC_BOX ["🌐 DATA CLOUD"]
+            DC["Unified View<br/>───────────────<br/>CRM + Campaigns<br/>Real-time Sync"]
+        end
+    end
+
+    %% Connections from Slack to Bot
+    AD_SPORTS -->|"1️⃣ Message"| BOLT
+    AD_ENT -->|"1️⃣ Message"| BOLT
+    AD_NEWS -->|"1️⃣ Message"| BOLT
+    AD_MORE -->|"1️⃣ Message"| BOLT
+
+    %% Bot to MCP Servers
+    MCP_CLIENT -->|"2️⃣ Campaign DML"| YAHOO_MCP
+    MCP_CLIENT -->|"2️⃣ CRM DML"| CRM_MCP
+
+    %% MCP to Data Systems
+    YAHOO_MCP -->|"3️⃣ INSERT/UPDATE"| SNOW
+    CRM_MCP -->|"3️⃣ INSERT/UPDATE"| OPP
+    CRM_MCP -->|"3️⃣ TRIGGER"| APPR
+
+    %% Data Sync
+    SNOW <-->|"4️⃣ Zero Copy"| DC
+    OPP <-->|"4️⃣ Data Cloud Connect"| DC
+
+    %% Styling with rgba for dark/light mode compatibility
+    style SLACK fill:rgba(74,21,75,0.85),stroke:rgba(97,31,105,1),color:#fff
+    style BOT fill:rgba(18,100,163,0.85),stroke:rgba(11,79,138,1),color:#fff
+    style MCP_SERVERS fill:rgba(255,152,0,0.85),stroke:rgba(230,81,0,1),color:#fff
+    style DATA fill:rgba(46,139,87,0.85),stroke:rgba(30,107,71,1),color:#fff
+    style SNOW_BOX fill:rgba(41,128,185,0.7),stroke:rgba(52,152,219,1),color:#fff
+    style CRM_BOX fill:rgba(155,89,182,0.7),stroke:rgba(142,68,173,1),color:#fff
+    style DC_BOX fill:rgba(39,174,96,0.7),stroke:rgba(46,204,113,1),color:#fff
+```
+
+### Complete Request Flow with Step Numbers
+
+```mermaid
+sequenceDiagram
+    box rgba(74,21,75,0.8) 🟣 Slack (100 ADs)
+        participant AD as 👤 Account Director
+        participant SLACK as 💬 Slack App
+    end
+
+    box rgba(18,100,163,0.8) 🔵 Bot Layer
+        participant BOT as 🔌 Slack Bolt
+        participant AI as 🧠 Claude Agent
+        participant MCP as 📡 MCP Client
+    end
+
+    box rgba(255,152,0,0.8) 🟠 MCP Servers
+        participant YAHOO as 🎯 Yahoo MCP
+        participant CRM as 💼 Salesforce MCP
+    end
+
+    box rgba(46,139,87,0.8) 🟢 Data Systems
+        participant SNOW as ❄️ Snowflake
+        participant SFDC as ☁️ SF CRM
+        participant APPR as ⚡ Approval
+        participant DC as 🌐 Data Cloud
+    end
+
+    Note over AD,DC: 📋 SCENARIO: AD creates Opportunity + Campaign with Approval
+
+    rect rgba(74,21,75,0.2)
+        Note over AD,SLACK: Step 1: User Input
+        AD->>SLACK: 1️⃣ "@adcp Create Nike opp<br/>$250K Q1 campaign"
+        SLACK->>BOT: 1️⃣ Slack Event
+    end
+
+    rect rgba(18,100,163,0.2)
+        Note over BOT,MCP: Step 2: AI Processing
+        BOT->>AI: 2️⃣ Extract message
+        AI->>AI: 2️⃣ Detect intent:<br/>• Create Opportunity<br/>• Create Campaign<br/>• Needs approval ($250K > $100K)
+        AI->>MCP: 2️⃣ Queue tool calls
+    end
+
+    rect rgba(155,89,182,0.2)
+        Note over MCP,SFDC: Step 3: CRM Operations
+        MCP->>CRM: 3️⃣ create_opportunity<br/>(Nike, $250K, Q1)
+        CRM->>SFDC: 3️⃣ INSERT Opportunity
+        SFDC-->>CRM: 3️⃣ Opp ID: 006xxx
+        CRM-->>MCP: 3️⃣ ✅ Created
+    end
+
+    rect rgba(255,152,0,0.2)
+        Note over MCP,SNOW: Step 4: Campaign Operations
+        MCP->>YAHOO: 4️⃣ create_media_buy<br/>(products, $250K)
+        YAHOO->>SNOW: 4️⃣ INSERT media_buys
+        YAHOO->>SNOW: 4️⃣ INSERT packages
+        SNOW-->>YAHOO: 4️⃣ Campaign ID
+        YAHOO-->>MCP: 4️⃣ ✅ Created
+    end
+
+    rect rgba(155,89,182,0.2)
+        Note over MCP,APPR: Step 5: Link & Submit Approval
+        MCP->>CRM: 5️⃣ update_opportunity<br/>(link campaign_id)
+        CRM->>SFDC: 5️⃣ UPDATE Opportunity
+        MCP->>CRM: 5️⃣ submit_for_approval<br/>(amount > $100K)
+        CRM->>APPR: 5️⃣ Trigger Approval Process
+        APPR->>APPR: 5️⃣ Route to VP
+    end
+
+    rect rgba(46,139,87,0.2)
+        Note over SNOW,DC: Step 6: Data Sync
+        SNOW->>DC: 6️⃣ Zero Copy Sync
+        SFDC->>DC: 6️⃣ Data Cloud Connect
+        Note over DC: Unified view:<br/>Opportunity + Campaign
+    end
+
+    rect rgba(74,21,75,0.2)
+        Note over AD,SLACK: Step 7: Response to User
+        MCP-->>AI: 7️⃣ All operations complete
+        AI-->>BOT: 7️⃣ Format response
+        BOT-->>SLACK: 7️⃣ Slack Blocks
+        SLACK-->>AD: 7️⃣ "✅ Created Opp 006xxx<br/>Campaign nike_q1_2025<br/>⏳ Pending VP approval"
+    end
+```
+
+### Approval Flow (VP in Slack)
+
+```mermaid
+sequenceDiagram
+    box rgba(74,21,75,0.8) 🟣 Slack
+        participant AD as 👤 Account Director
+        participant VP as 👔 VP Sales
+        participant SLACK as 💬 Slack
+    end
+
+    box rgba(18,100,163,0.8) 🔵 Bot
+        participant BOT as 🔌 Bot
+        participant AI as 🧠 Claude
+    end
+
+    box rgba(255,152,0,0.8) 🟠 MCP
+        participant CRM as 💼 SF MCP
+    end
+
+    box rgba(46,139,87,0.8) 🟢 CRM
+        participant SFDC as ☁️ Salesforce
+        participant APPR as ⚡ Approval
+    end
+
+    Note over AD,APPR: 🔔 VP Receives Approval Request in Slack
+
+    rect rgba(255,193,7,0.2)
+        Note over BOT,VP: Approval Notification
+        BOT->>SLACK: 1️⃣ Post to VP
+        SLACK->>VP: 1️⃣ 🔔 Approval Request<br/>Nike $250K Campaign<br/>[✅ Approve] [❌ Reject]
+    end
+
+    rect rgba(76,175,80,0.2)
+        Note over VP,APPR: VP Approves
+        VP->>SLACK: 2️⃣ Click ✅ Approve
+        SLACK->>BOT: 2️⃣ Button action
+        BOT->>AI: 2️⃣ Process approval
+        AI->>CRM: 3️⃣ approve_record(opp_id)
+        CRM->>APPR: 3️⃣ Approve in SF
+        APPR->>SFDC: 3️⃣ UPDATE status
+        SFDC-->>CRM: 3️⃣ ✅ Approved
+    end
+
+    rect rgba(74,21,75,0.2)
+        Note over AD,VP: Notifications
+        CRM-->>AI: 4️⃣ Approval complete
+        AI-->>BOT: 4️⃣ Notify parties
+        BOT-->>SLACK: 4️⃣ Messages
+        SLACK-->>AD: 4️⃣ "✅ APPROVED by VP!"
+        SLACK-->>VP: 4️⃣ "✅ Approval recorded"
+    end
+
+    Note over AD,APPR: ⏱️ Total time: ~30 seconds<br/>vs 24-48 hours traditional
+```
+
+### DML Operations Summary
+
+| Source | Target | Operation | MCP Tool |
+|--------|--------|-----------|----------|
+| Slack | Snowflake | INSERT media_buys | `create_media_buy` |
+| Slack | Snowflake | INSERT packages | `create_media_buy` |
+| Slack | Snowflake | UPDATE media_buys | `update_media_buy` |
+| Slack | Salesforce CRM | INSERT Opportunity | `create_opportunity` |
+| Slack | Salesforce CRM | UPDATE Opportunity | `update_opportunity` |
+| Slack | Salesforce CRM | Trigger Approval | `submit_for_approval` |
+| Slack | Salesforce CRM | Process Approval | `approve_record` |
+
+### Data Unification in Data Cloud
+
+```mermaid
+flowchart LR
+    subgraph SOURCES ["📥 DATA SOURCES"]
+        SNOW["❄️ Snowflake<br/>───────────────<br/>media_buys<br/>packages<br/>delivery_metrics"]
+        CRM["☁️ Salesforce CRM<br/>───────────────<br/>Opportunities<br/>Accounts<br/>Contacts"]
+    end
+
+    subgraph DC ["🌐 SALESFORCE DATA CLOUD"]
+        direction TB
+        UNIFIED["Unified Customer Profile<br/>───────────────<br/>Opportunity + Campaign<br/>Account + Delivery<br/>Contact + Engagement"]
+        
+        SEGMENT["Segments<br/>───────────────<br/>High-Value Advertisers<br/>Active Campaigns<br/>Pending Approvals"]
+    end
+
+    subgraph OUTPUTS ["📤 OUTPUTS"]
+        SLACK_OUT["💬 Slack Reports<br/>───────────────<br/>Pipeline Dashboard<br/>Campaign Performance"]
+        AGENT["🤖 AI Agent Queries<br/>───────────────<br/>Cross-system insights"]
+    end
+
+    SNOW -->|"Zero Copy<br/>(instant)"| UNIFIED
+    CRM -->|"Data Cloud Connect<br/>(real-time)"| UNIFIED
+    
+    UNIFIED --> SEGMENT
+    SEGMENT --> SLACK_OUT
+    SEGMENT --> AGENT
+
+    style SOURCES fill:rgba(46,139,87,0.7),stroke:rgba(30,107,71,1),color:#fff
+    style DC fill:rgba(155,89,182,0.7),stroke:rgba(142,68,173,1),color:#fff
+    style OUTPUTS fill:rgba(74,21,75,0.7),stroke:rgba(97,31,105,1),color:#fff
+```
+
+### DML Operations via Slack
+
+When an AD says: *"Create an opportunity for Nike, $500K Q1 campaign"*
+
+```mermaid
+sequenceDiagram
+    box rgba(74,21,75,0.8) Slack
+        participant AD as 👤 Account Director
+    end
+
+    box rgba(18,100,163,0.8) Bot
+        participant BOT as 🧠 Claude Agent
+    end
+
+    box rgba(123,104,238,0.8) MCP Servers
+        participant CRM as 📊 Salesforce MCP
+        participant YAHOO as 🎯 Yahoo MCP
+    end
+
+    box rgba(46,139,87,0.8) Systems
+        participant SF as ☁️ Salesforce CRM
+        participant SNOW as ❄️ Snowflake
+    end
+
+    AD->>BOT: "Create Nike opportunity<br/>$500K Q1 sports campaign"
+
+    rect rgba(0,150,136,0.2)
+        Note over BOT,SF: CRM DML Operation
+        BOT->>CRM: create_opportunity<br/>(account, amount, stage)
+        CRM->>SF: INSERT Opportunity
+        SF-->>CRM: Opportunity ID: 006xxx
+        CRM-->>BOT: ✅ Created
+    end
+
+    BOT->>AD: Created Opportunity 006xxx<br/>🔗 [View in Salesforce]
+
+    AD->>BOT: "Now create the campaign<br/>with Yahoo Sports Video"
+
+    rect rgba(123,104,238,0.2)
+        Note over BOT,SNOW: Campaign DML Operation
+        BOT->>YAHOO: create_media_buy<br/>(products, budget, dates)
+        YAHOO->>SNOW: INSERT media_buys
+        SNOW-->>YAHOO: Campaign ID
+        YAHOO-->>BOT: ✅ Created
+    end
+
+    rect rgba(0,150,136,0.2)
+        Note over BOT,SF: Link Campaign to Opportunity
+        BOT->>CRM: update_opportunity<br/>(add campaign_id)
+        CRM->>SF: UPDATE Opportunity
+    end
+
+    BOT->>AD: ✅ Campaign created & linked!<br/>Opportunity: 006xxx<br/>Campaign: nike_q1_2025
+```
+
+### Approval Workflow
+
+Campaigns over $100K require VP approval. Here's how it works entirely in Slack:
+
+```mermaid
+sequenceDiagram
+    box rgba(74,21,75,0.8) Slack
+        participant AD as 👤 Account Director
+        participant VP as 👔 VP Sales
+    end
+
+    box rgba(18,100,163,0.8) Bot
+        participant BOT as 🧠 Claude Agent
+    end
+
+    box rgba(123,104,238,0.8) MCP
+        participant CRM as 📊 Salesforce MCP
+    end
+
+    box rgba(46,139,87,0.8) CRM
+        participant SF as ☁️ Salesforce
+        participant APPR as ⚡ Approval Process
+    end
+
+    AD->>BOT: "Create campaign for Nike<br/>$250K Yahoo Premium Video"
+
+    BOT->>BOT: Detect: amount > $100K<br/>→ requires approval
+
+    rect rgba(255,193,7,0.2)
+        Note over BOT,APPR: Submit for Approval
+        BOT->>CRM: create_media_buy<br/>(status: pending_approval)
+        CRM->>SF: INSERT media_buy
+        SF->>APPR: Trigger Approval Process
+        APPR->>APPR: Route to VP
+    end
+
+    BOT->>AD: ⏳ Campaign submitted for approval<br/>Waiting on VP approval
+
+    BOT->>VP: 🔔 Approval Request<br/>Nike $250K Campaign<br/>[✅ Approve] [❌ Reject]
+
+    VP->>BOT: ✅ Approve
+
+    rect rgba(76,175,80,0.2)
+        Note over BOT,SF: Process Approval
+        BOT->>CRM: approve_record<br/>(campaign_id)
+        CRM->>SF: UPDATE status = approved
+        SF->>APPR: Complete approval
+    end
+
+    BOT->>AD: ✅ Campaign APPROVED by VP!<br/>Campaign is now active
+    BOT->>VP: ✅ Approval recorded
+```
+
+### Why Slack-Native Approvals Work
+
+| Traditional | Slack-Native |
+|------------|--------------|
+| VP gets email → opens Salesforce → finds record → clicks approve | VP sees Slack notification → clicks ✅ |
+| 24-48 hour turnaround | 5-minute turnaround |
+| Context lost in email chain | Full context in thread |
+| No audit trail in Slack | Everything logged to CRM |
+
+### Technical Implementation
+
+The approval flow requires:
+
+1. **Salesforce MCP Server** with tools:
+   - `create_opportunity` — INSERT into Opportunity object
+   - `update_opportunity` — UPDATE with campaign links
+   - `submit_for_approval` — Trigger approval process
+   - `approve_record` / `reject_record` — Process approvals
+
+2. **Slack Interactivity**:
+   - Block Kit buttons for Approve/Reject
+   - Action handlers in `bot.py`
+   - Callback to Salesforce MCP
+
+3. **Data Cloud Unification**:
+   - CRM data + Campaign data in single view
+   - Segment overlap (Nike customers × Yahoo audience)
+   - Real-time reporting across both systems
+
+### Sample Slack Commands
+
+```
+@adcp-slack-app create opportunity for Nike, $500K Q1 sports
+@adcp-slack-app link campaign nike_q1_2025 to opportunity 006xxx
+@adcp-slack-app show pending approvals
+@adcp-slack-app approve campaign nike_q1_2025
+@adcp-slack-app show Nike pipeline (pulls from CRM + campaigns)
+```
+
+---
+
+## Developer Experience
+
+### Gotchas We Hit (So You Don't Have To)
+
+#### 1. Package Manager Conflict
+
+Heroku's Python buildpack got strict in late 2024. If you have both `requirements.txt` AND `uv.lock`, it fails:
+
+```
+Error: Multiple Python package manager files were found.
+```
+
+**Fix:** Pick one. We use `uv` (faster, lockfile support). Delete `requirements.txt`.
+
+#### 2. Python Version File
+
+When using `uv`, Heroku doesn't support `runtime.txt`:
+
+```
+Error: The runtime.txt file isn't supported when using uv.
+```
+
+**Fix:** Delete `runtime.txt`, create `.python-version`:
+```
+3.12
+```
+
+Don't include patch version — let Heroku auto-update for security patches.
+
+#### 3. Socket Mode on Heroku
+
+Heroku requires web dynos to bind to `$PORT` within 60 seconds. Socket Mode only opens an outbound WebSocket — no port binding. Heroku kills it:
+
+```
+heroku[web.1]: Stopping process with SIGKILL
+heroku[web.1]: State changed from starting to crashed
+```
+
+**Fix:** Run a minimal health check HTTP server alongside Socket Mode:
+
+```python
+# In slack_app.py
+if port:  # Heroku sets PORT
+    # Start health server AND Socket Mode concurrently
+    await asyncio.gather(
+        health_server.serve(),  # Binds to $PORT
+        start_socket_mode(slack_app)  # WebSocket to Slack
+    )
+```
+
+#### 4. Local vs Heroku: Only One at a Time
+
+Both local and Heroku use the same `SLACK_APP_TOKEN` for Socket Mode. If both are running, Slack randomly distributes messages between them.
+
+**Fix:** Scale down Heroku when testing locally:
+```bash
+heroku ps:scale web=0 -a adcp-slack-app   # Stop Heroku
+uv run python slack_app.py                # Test local
+
+# When done:
+heroku ps:scale web=1 -a adcp-slack-app   # Resume Heroku
+```
+
+#### 5. Subtree Push for Monorepo
+
+Deploying a subdirectory to Heroku:
+```bash
+git subtree push --prefix yahoo_mcp_server adcp-slack-app slack-mcp:main
+```
+
+If remote isn't set:
+```bash
+git remote add adcp-slack-app https://git.heroku.com/adcp-slack-app.git
+```
+
+### Deployment Checklist
+
+- [ ] `.python-version` exists (not `runtime.txt`)
+- [ ] Only `uv.lock` + `pyproject.toml` (no `requirements.txt`)
+- [ ] `Procfile` set to `web: python slack_app.py`
+- [ ] All env vars set in Heroku (`heroku config -a adcp-slack-app`)
+- [ ] Local instance stopped before testing Heroku
+- [ ] Health check server running alongside Socket Mode
+
+---
+
 ## Learn More
 
 - [MCP Protocol](https://modelcontextprotocol.io)
