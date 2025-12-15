@@ -1,2 +1,4 @@
-web: python server_http.py
+# Heroku Procfile for Yahoo Ads Slack Bot
+# This runs the Slack MCP client (slack-mcp branch)
 
+web: python slack_app.py
