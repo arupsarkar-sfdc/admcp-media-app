@@ -166,9 +166,9 @@ async def run_http_mode(port: int):
     await server.serve()
 
 
-async def run_socket_mode():
-    """Run in Socket Mode (for local development)"""
-    from slack.bot import create_slack_app, run_socket_mode
+async def run_socket_mode(port: int = None):
+    """Run in Socket Mode with optional health check server for Heroku"""
+    from slack.bot import create_slack_app, run_socket_mode as start_socket_mode
     
     # Create Slack app
     slack_app = create_slack_app()
@@ -177,10 +177,41 @@ async def run_socket_mode():
     await slack_app._advertising_agent.initialize()
     
     print("🔌 Starting in Socket Mode (WebSocket connection)")
-    print("   This mode is for local development")
-    print()
     
-    await run_socket_mode(slack_app)
+    if port:
+        # Heroku requires binding to $PORT - run health server alongside Socket Mode
+        print(f"   Running health check server on port {port} for Heroku")
+        
+        from starlette.applications import Starlette
+        from starlette.routing import Route
+        from starlette.responses import JSONResponse
+        import uvicorn
+        
+        async def health_check(request):
+            return JSONResponse({
+                "status": "healthy",
+                "mode": "socket",
+                "service": "yahoo-ads-slack-bot"
+            })
+        
+        health_app = Starlette(routes=[
+            Route("/", health_check, methods=["GET"]),
+            Route("/health", health_check, methods=["GET"]),
+        ])
+        
+        # Run both health server and Socket Mode concurrently
+        config = uvicorn.Config(health_app, host="0.0.0.0", port=port, log_level="warning")
+        server = uvicorn.Server(config)
+        
+        # Start both tasks
+        await asyncio.gather(
+            server.serve(),
+            start_socket_mode(slack_app)
+        )
+    else:
+        print("   Local development mode")
+        print()
+        await start_socket_mode(slack_app)
 
 
 async def main():
@@ -193,7 +224,8 @@ async def main():
     if mode == "http":
         await run_http_mode(port)
     else:
-        await run_socket_mode()
+        # Pass port to Socket Mode so it can run health server for Heroku
+        await run_socket_mode(port)
 
 
 if __name__ == "__main__":
