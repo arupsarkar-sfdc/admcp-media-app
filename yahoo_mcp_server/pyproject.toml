@@ -12,6 +12,12 @@ dependencies = [
     "httpx>=0.25.0",
     "snowflake-connector-python>=4.1.0",
     "anthropic>=0.74.1",
+    "starlette>=0.27.0",
+    "uvicorn>=0.24.0",
+    # Slack Integration
+    "slack-bolt>=1.18.0",
+    "slack-sdk>=3.21.0",
+    "aiohttp>=3.9.0",
 ]
 
 [build-system]
