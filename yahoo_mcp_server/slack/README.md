@@ -87,22 +87,22 @@ Here's the complete journey of a single request:
 
 ```mermaid
 sequenceDiagram
-    box rgba(74,21,75,0.8) Slack Workspace
+    box rgb(74, 21, 75) Slack Workspace
         participant U as 👤 User
         participant S as 💬 Slack
     end
     
-    box rgba(18,100,163,0.8) Slack Bot
+    box rgb(18, 100, 163) Slack Bot
         participant B as 🔌 Bolt Handler
         participant A as 🧠 Claude Agent
         participant M as 📡 MCP Client
     end
     
-    box rgba(123,104,238,0.8) Yahoo Platform
+    box rgb(123, 104, 238) Yahoo Platform
         participant Y as 🎯 MCP Server
     end
     
-    box rgba(46,139,87,0.8) Data Layer
+    box rgb(46, 139, 87) Data Layer
         participant DC as ☁️ Data Cloud
         participant SF as ❄️ Snowflake
     end
@@ -112,20 +112,20 @@ sequenceDiagram
     U->>S: @adcp-slack-app show me<br/>Nike advertising options
     S->>B: Slack Event (app_mention)
     
-    rect rgba(18,100,163,0.3)
+    rect rgb(200, 220, 240)
         Note over B,M: Bot Processing
         B->>A: Extract message text
         A->>A: Build conversation context
         A->>M: Tool call: get_products<br/>brief="Nike advertising"
     end
     
-    rect rgba(123,104,238,0.3)
+    rect rgb(220, 210, 250)
         Note over M,Y: MCP Protocol
         M->>Y: JSON-RPC 2.0 Request<br/>method: tools/call
         Y->>Y: Validate principal<br/>Apply enterprise pricing
     end
     
-    rect rgba(46,139,87,0.3)
+    rect rgb(200, 235, 210)
         Note over Y,SF: Data Access (READ)
         Y->>DC: SQL Query via Query API
         DC->>SF: Zero Copy Read
@@ -151,19 +151,19 @@ When a user creates a campaign, the flow is slightly different:
 
 ```mermaid
 sequenceDiagram
-    box rgba(74,21,75,0.8) Slack
+    box rgb(74, 21, 75) Slack
         participant U as 👤 User
     end
     
-    box rgba(18,100,163,0.8) Bot
+    box rgb(18, 100, 163) Bot
         participant A as 🧠 Agent
     end
     
-    box rgba(123,104,238,0.8) Yahoo
+    box rgb(123, 104, 238) Yahoo
         participant Y as 🎯 MCP Server
     end
     
-    box rgba(46,139,87,0.8) Data
+    box rgb(46, 139, 87) Data
         participant SF as ❄️ Snowflake
         participant DC as ☁️ Data Cloud
     end
@@ -175,7 +175,7 @@ sequenceDiagram
     
     A->>Y: create_media_buy<br/>packages, dates, budget
     
-    rect rgba(255,165,0,0.2)
+    rect rgb(255, 245, 220)
         Note over Y,DC: WRITE Path
         Y->>SF: INSERT media_buys
         Y->>SF: INSERT packages
@@ -391,37 +391,37 @@ flowchart TB
     SNOW <-->|"4️⃣ Zero Copy"| DC
     OPP <-->|"4️⃣ Data Cloud Connect"| DC
 
-    %% Styling with rgba for dark/light mode compatibility
-    style SLACK fill:rgba(74,21,75,0.85),stroke:rgba(97,31,105,1),color:#fff
-    style BOT fill:rgba(18,100,163,0.85),stroke:rgba(11,79,138,1),color:#fff
-    style MCP_SERVERS fill:rgba(255,152,0,0.85),stroke:rgba(230,81,0,1),color:#fff
-    style DATA fill:rgba(46,139,87,0.85),stroke:rgba(30,107,71,1),color:#fff
-    style SNOW_BOX fill:rgba(41,128,185,0.7),stroke:rgba(52,152,219,1),color:#fff
-    style CRM_BOX fill:rgba(155,89,182,0.7),stroke:rgba(142,68,173,1),color:#fff
-    style DC_BOX fill:rgba(39,174,96,0.7),stroke:rgba(46,204,113,1),color:#fff
+    %% Styling with hex colors (GitHub compatible)
+    style SLACK fill:#4A154B,stroke:#611f69,color:#fff
+    style BOT fill:#1264A3,stroke:#0b4f8a,color:#fff
+    style MCP_SERVERS fill:#FF9800,stroke:#E65100,color:#fff
+    style DATA fill:#2E8B57,stroke:#1e6b47,color:#fff
+    style SNOW_BOX fill:#2980B9,stroke:#3498DB,color:#fff
+    style CRM_BOX fill:#9B59B6,stroke:#8E44AD,color:#fff
+    style DC_BOX fill:#27AE60,stroke:#2ECC71,color:#fff
 ```
 
 ### Complete Request Flow with Step Numbers
 
 ```mermaid
 sequenceDiagram
-    box rgba(74,21,75,0.8) 🟣 Slack (100 ADs)
+    box rgb(74, 21, 75) 🟣 Slack (100 ADs)
         participant AD as 👤 Account Director
         participant SLACK as 💬 Slack App
     end
 
-    box rgba(18,100,163,0.8) 🔵 Bot Layer
+    box rgb(18, 100, 163) 🔵 Bot Layer
         participant BOT as 🔌 Slack Bolt
         participant AI as 🧠 Claude Agent
         participant MCP as 📡 MCP Client
     end
 
-    box rgba(255,152,0,0.8) 🟠 MCP Servers
+    box rgb(255, 152, 0) 🟠 MCP Servers
         participant YAHOO as 🎯 Yahoo MCP
         participant CRM as 💼 Salesforce MCP
     end
 
-    box rgba(46,139,87,0.8) 🟢 Data Systems
+    box rgb(46, 139, 87) 🟢 Data Systems
         participant SNOW as ❄️ Snowflake
         participant SFDC as ☁️ SF CRM
         participant APPR as ⚡ Approval
@@ -430,20 +430,20 @@ sequenceDiagram
 
     Note over AD,DC: 📋 SCENARIO: AD creates Opportunity + Campaign with Approval
 
-    rect rgba(74,21,75,0.2)
+    rect rgb(230, 210, 230)
         Note over AD,SLACK: Step 1: User Input
         AD->>SLACK: 1️⃣ "@adcp Create Nike opp<br/>$250K Q1 campaign"
         SLACK->>BOT: 1️⃣ Slack Event
     end
 
-    rect rgba(18,100,163,0.2)
+    rect rgb(200, 220, 240)
         Note over BOT,MCP: Step 2: AI Processing
         BOT->>AI: 2️⃣ Extract message
         AI->>AI: 2️⃣ Detect intent:<br/>• Create Opportunity<br/>• Create Campaign<br/>• Needs approval ($250K > $100K)
         AI->>MCP: 2️⃣ Queue tool calls
     end
 
-    rect rgba(155,89,182,0.2)
+    rect rgb(235, 220, 245)
         Note over MCP,SFDC: Step 3: CRM Operations
         MCP->>CRM: 3️⃣ create_opportunity<br/>(Nike, $250K, Q1)
         CRM->>SFDC: 3️⃣ INSERT Opportunity
@@ -451,7 +451,7 @@ sequenceDiagram
         CRM-->>MCP: 3️⃣ ✅ Created
     end
 
-    rect rgba(255,152,0,0.2)
+    rect rgb(255, 240, 220)
         Note over MCP,SNOW: Step 4: Campaign Operations
         MCP->>YAHOO: 4️⃣ create_media_buy<br/>(products, $250K)
         YAHOO->>SNOW: 4️⃣ INSERT media_buys
@@ -460,7 +460,7 @@ sequenceDiagram
         YAHOO-->>MCP: 4️⃣ ✅ Created
     end
 
-    rect rgba(155,89,182,0.2)
+    rect rgb(235, 220, 245)
         Note over MCP,APPR: Step 5: Link & Submit Approval
         MCP->>CRM: 5️⃣ update_opportunity<br/>(link campaign_id)
         CRM->>SFDC: 5️⃣ UPDATE Opportunity
@@ -469,14 +469,14 @@ sequenceDiagram
         APPR->>APPR: 5️⃣ Route to VP
     end
 
-    rect rgba(46,139,87,0.2)
+    rect rgb(210, 240, 220)
         Note over SNOW,DC: Step 6: Data Sync
         SNOW->>DC: 6️⃣ Zero Copy Sync
         SFDC->>DC: 6️⃣ Data Cloud Connect
         Note over DC: Unified view:<br/>Opportunity + Campaign
     end
 
-    rect rgba(74,21,75,0.2)
+    rect rgb(230, 210, 230)
         Note over AD,SLACK: Step 7: Response to User
         MCP-->>AI: 7️⃣ All operations complete
         AI-->>BOT: 7️⃣ Format response
@@ -489,35 +489,35 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    box rgba(74,21,75,0.8) 🟣 Slack
+    box rgb(74, 21, 75) 🟣 Slack
         participant AD as 👤 Account Director
         participant VP as 👔 VP Sales
         participant SLACK as 💬 Slack
     end
 
-    box rgba(18,100,163,0.8) 🔵 Bot
+    box rgb(18, 100, 163) 🔵 Bot
         participant BOT as 🔌 Bot
         participant AI as 🧠 Claude
     end
 
-    box rgba(255,152,0,0.8) 🟠 MCP
+    box rgb(255, 152, 0) 🟠 MCP
         participant CRM as 💼 SF MCP
     end
 
-    box rgba(46,139,87,0.8) 🟢 CRM
+    box rgb(46, 139, 87) 🟢 CRM
         participant SFDC as ☁️ Salesforce
         participant APPR as ⚡ Approval
     end
 
     Note over AD,APPR: 🔔 VP Receives Approval Request in Slack
 
-    rect rgba(255,193,7,0.2)
+    rect rgb(255, 250, 220)
         Note over BOT,VP: Approval Notification
         BOT->>SLACK: 1️⃣ Post to VP
         SLACK->>VP: 1️⃣ 🔔 Approval Request<br/>Nike $250K Campaign<br/>[✅ Approve] [❌ Reject]
     end
 
-    rect rgba(76,175,80,0.2)
+    rect rgb(220, 245, 220)
         Note over VP,APPR: VP Approves
         VP->>SLACK: 2️⃣ Click ✅ Approve
         SLACK->>BOT: 2️⃣ Button action
@@ -528,7 +528,7 @@ sequenceDiagram
         SFDC-->>CRM: 3️⃣ ✅ Approved
     end
 
-    rect rgba(74,21,75,0.2)
+    rect rgb(230, 210, 230)
         Note over AD,VP: Notifications
         CRM-->>AI: 4️⃣ Approval complete
         AI-->>BOT: 4️⃣ Notify parties
@@ -580,9 +580,9 @@ flowchart LR
     SEGMENT --> SLACK_OUT
     SEGMENT --> AGENT
 
-    style SOURCES fill:rgba(46,139,87,0.7),stroke:rgba(30,107,71,1),color:#fff
-    style DC fill:rgba(155,89,182,0.7),stroke:rgba(142,68,173,1),color:#fff
-    style OUTPUTS fill:rgba(74,21,75,0.7),stroke:rgba(97,31,105,1),color:#fff
+    style SOURCES fill:#2E8B57,stroke:#1e6b47,color:#fff
+    style DC fill:#9B59B6,stroke:#8E44AD,color:#fff
+    style OUTPUTS fill:#4A154B,stroke:#611f69,color:#fff
 ```
 
 ### DML Operations via Slack
@@ -591,27 +591,27 @@ When an AD says: *"Create an opportunity for Nike, $500K Q1 campaign"*
 
 ```mermaid
 sequenceDiagram
-    box rgba(74,21,75,0.8) Slack
+    box rgb(74, 21, 75) Slack
         participant AD as 👤 Account Director
     end
 
-    box rgba(18,100,163,0.8) Bot
+    box rgb(18, 100, 163) Bot
         participant BOT as 🧠 Claude Agent
     end
 
-    box rgba(123,104,238,0.8) MCP Servers
+    box rgb(123, 104, 238) MCP Servers
         participant CRM as 📊 Salesforce MCP
         participant YAHOO as 🎯 Yahoo MCP
     end
 
-    box rgba(46,139,87,0.8) Systems
+    box rgb(46, 139, 87) Systems
         participant SF as ☁️ Salesforce CRM
         participant SNOW as ❄️ Snowflake
     end
 
     AD->>BOT: "Create Nike opportunity<br/>$500K Q1 sports campaign"
 
-    rect rgba(0,150,136,0.2)
+    rect rgb(210, 240, 235)
         Note over BOT,SF: CRM DML Operation
         BOT->>CRM: create_opportunity<br/>(account, amount, stage)
         CRM->>SF: INSERT Opportunity
@@ -623,7 +623,7 @@ sequenceDiagram
 
     AD->>BOT: "Now create the campaign<br/>with Yahoo Sports Video"
 
-    rect rgba(123,104,238,0.2)
+    rect rgb(230, 225, 250)
         Note over BOT,SNOW: Campaign DML Operation
         BOT->>YAHOO: create_media_buy<br/>(products, budget, dates)
         YAHOO->>SNOW: INSERT media_buys
@@ -631,7 +631,7 @@ sequenceDiagram
         YAHOO-->>BOT: ✅ Created
     end
 
-    rect rgba(0,150,136,0.2)
+    rect rgb(210, 240, 235)
         Note over BOT,SF: Link Campaign to Opportunity
         BOT->>CRM: update_opportunity<br/>(add campaign_id)
         CRM->>SF: UPDATE Opportunity
@@ -646,20 +646,20 @@ Campaigns over $100K require VP approval. Here's how it works entirely in Slack:
 
 ```mermaid
 sequenceDiagram
-    box rgba(74,21,75,0.8) Slack
+    box rgb(74, 21, 75) Slack
         participant AD as 👤 Account Director
         participant VP as 👔 VP Sales
     end
 
-    box rgba(18,100,163,0.8) Bot
+    box rgb(18, 100, 163) Bot
         participant BOT as 🧠 Claude Agent
     end
 
-    box rgba(123,104,238,0.8) MCP
+    box rgb(123, 104, 238) MCP
         participant CRM as 📊 Salesforce MCP
     end
 
-    box rgba(46,139,87,0.8) CRM
+    box rgb(46, 139, 87) CRM
         participant SF as ☁️ Salesforce
         participant APPR as ⚡ Approval Process
     end
@@ -668,7 +668,7 @@ sequenceDiagram
 
     BOT->>BOT: Detect: amount > $100K<br/>→ requires approval
 
-    rect rgba(255,193,7,0.2)
+    rect rgb(255, 250, 220)
         Note over BOT,APPR: Submit for Approval
         BOT->>CRM: create_media_buy<br/>(status: pending_approval)
         CRM->>SF: INSERT media_buy
@@ -682,7 +682,7 @@ sequenceDiagram
 
     VP->>BOT: ✅ Approve
 
-    rect rgba(76,175,80,0.2)
+    rect rgb(220, 245, 220)
         Note over BOT,SF: Process Approval
         BOT->>CRM: approve_record<br/>(campaign_id)
         CRM->>SF: UPDATE status = approved
