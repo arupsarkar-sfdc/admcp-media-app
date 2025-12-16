@@ -43,18 +43,18 @@ flowchart TB
     end
 
     subgraph BOT ["🤖 SLACK BOT (Heroku)"]
-        BOLT["Slack Bolt\nEvent Handler"]
-        AGENT["Claude AI Agent\nNatural Language → Tool Calls"]
-        MCP_CLIENT["MCP Client\nTool Execution"]
+        BOLT["Slack Bolt<br/>Event Handler"]
+        AGENT["Claude AI Agent<br/>Natural Language → Tool Calls"]
+        MCP_CLIENT["MCP Client<br/>Tool Execution"]
     end
 
     subgraph YAHOO ["🎯 YAHOO MCP SERVER (Heroku)"]
-        MCP_SERVER["MCP Server\n9 AdCP Tools"]
+        MCP_SERVER["MCP Server<br/>9 AdCP Tools"]
     end
 
     subgraph DATA ["💾 DATA LAYER"]
-        DC["Salesforce\nData Cloud\n─────────\nREAD Path\nQuery API"]
-        SF["Snowflake\n─────────\nWRITE Path\nDirect Insert"]
+        DC["Salesforce<br/>Data Cloud<br/>─────────<br/>READ Path<br/>Query API"]
+        SF["Snowflake<br/>─────────<br/>WRITE Path<br/>Direct Insert"]
     end
 
     USER --> BOLT
