@@ -1127,6 +1127,332 @@ async def verify_channel_access():
             logger.error(f"❌ Cannot access {channel_id}: {e}")
 ```
 
+---
+
+## Software Engineering: Design Principles Applied
+
+This section documents the reasoning behind the channel routing architecture, applying established software engineering principles to validate the design.
+
+### Domain-Driven Design (DDD)
+
+The routing system is organized into **bounded contexts**, each with a single, well-defined responsibility:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           ROUTING DOMAIN                                    │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌───────────────────┐   ┌───────────────────┐   ┌───────────────────┐     │
+│  │   CHANNEL         │   │   CEM             │   │   CAMPAIGN        │     │
+│  │   CONTEXT         │   │   CONTEXT         │   │   CONTEXT         │     │
+│  │   ─────────────   │   │   ─────────────   │   │   ─────────────   │     │
+│  │   • Channel IDs   │   │   • CEM Users     │   │   • Budget        │     │
+│  │   • Channel Types │   │   • Assignments   │   │   • Principal     │     │
+│  │   • Membership    │   │   • Verticals     │   │   • Urgency       │     │
+│  └───────────────────┘   └───────────────────┘   └───────────────────┘     │
+│           │                       │                       │                 │
+│           └───────────────────────┼───────────────────────┘                 │
+│                                   ▼                                         │
+│                    ┌───────────────────────────┐                            │
+│                    │   ROUTING POLICY          │                            │
+│                    │   ───────────────────     │                            │
+│                    │   • Evaluate campaign     │                            │
+│                    │   • Apply rules           │                            │
+│                    │   • Return destination    │                            │
+│                    └───────────────────────────┘                            │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Single Responsibility Principle (SRP)
+
+Each class has **one reason to change**:
+
+| Class | Responsibility | Changes When |
+|-------|---------------|--------------|
+| `ChannelRegistry` | Knows which channels exist and their IDs | Channels are added/removed |
+| `CEMResolver` | Maps principal → CEM → Slack user ID | CEM assignments change |
+| `RoutingPolicy` | Evaluates campaign and returns destination | Business rules change |
+| `MessageDispatcher` | Posts messages to Slack | Slack API changes |
+
+```python
+# SRP: Each class does ONE thing
+
+class ChannelRegistry:
+    """Knows about channel configurations. Nothing else."""
+    
+    def get_channel(self, channel_type: str, vertical: str = None) -> str:
+        """Returns channel ID for given type and optional vertical."""
+        pass
+    
+    def verify_membership(self, channel_id: str) -> bool:
+        """Checks if bot is member of channel."""
+        pass
+
+
+class CEMResolver:
+    """Maps principals to CEMs. Nothing else."""
+    
+    def get_cem_for_principal(self, principal_id: str) -> CEMAssignment:
+        """Returns CEM user details for a principal."""
+        pass
+    
+    def get_slack_id(self, cem_user_id: str) -> str:
+        """Returns Slack user ID for CEM."""
+        pass
+
+
+class RoutingPolicy:
+    """Decides where messages go. Nothing else."""
+    
+    def __init__(self, registry: ChannelRegistry, resolver: CEMResolver):
+        self.registry = registry
+        self.resolver = resolver
+    
+    def evaluate(self, campaign: Campaign) -> RoutingDecision:
+        """Applies rules to determine destination."""
+        pass
+
+
+class MessageDispatcher:
+    """Sends messages to Slack. Nothing else."""
+    
+    def __init__(self, slack_client: WebClient):
+        self.client = slack_client
+    
+    async def dispatch(self, destination: str, blocks: list) -> None:
+        """Posts message to channel or DM."""
+        pass
+```
+
+### Open/Closed Principle (OCP)
+
+The routing system is **open for extension** (new rules) but **closed for modification** (core logic doesn't change):
+
+```python
+# OCP: Add new rules without modifying existing code
+
+class RoutingRule(ABC):
+    """Base class for routing rules."""
+    
+    @abstractmethod
+    def matches(self, campaign: Campaign) -> bool:
+        """Returns True if this rule applies."""
+        pass
+    
+    @abstractmethod
+    def get_destination(self, campaign: Campaign, context: RoutingContext) -> str:
+        """Returns destination channel/user ID."""
+        pass
+
+
+class UrgentRule(RoutingRule):
+    """Routes urgent campaigns to escalation channel."""
+    
+    def matches(self, campaign: Campaign) -> bool:
+        return campaign.urgent is True
+    
+    def get_destination(self, campaign: Campaign, context: RoutingContext) -> str:
+        return context.registry.get_channel("urgent")
+
+
+class HighValueRule(RoutingRule):
+    """Routes high-budget campaigns to VP channel."""
+    
+    def __init__(self, threshold: float):
+        self.threshold = threshold
+    
+    def matches(self, campaign: Campaign) -> bool:
+        return campaign.total_budget >= self.threshold
+    
+    def get_destination(self, campaign: Campaign, context: RoutingContext) -> str:
+        return context.registry.get_channel("vp_approval", campaign.vertical)
+
+
+class DefaultRule(RoutingRule):
+    """Routes to CEM's DM. Always matches (fallback)."""
+    
+    def matches(self, campaign: Campaign) -> bool:
+        return True  # Always matches
+    
+    def get_destination(self, campaign: Campaign, context: RoutingContext) -> str:
+        cem = context.resolver.get_cem_for_principal(campaign.principal_id)
+        return cem.slack_id if cem else context.registry.get_channel("default")
+
+
+# Compose rules in priority order
+routing_policy = RoutingPolicy(rules=[
+    UrgentRule(),                    # Priority 1
+    HighValueRule(threshold=250000), # Priority 2
+    DefaultRule(),                   # Fallback
+])
+```
+
+**To add a new rule** (e.g., "VIP clients go to CEO channel"):
+1. Create `VIPClientRule(RoutingRule)`
+2. Add to rules list
+3. No existing code changes
+
+### Dependency Inversion Principle (DIP)
+
+High-level modules depend on **abstractions**, not concrete implementations:
+
+```mermaid
+flowchart TB
+    subgraph HIGH ["🔷 HIGH-LEVEL POLICY"]
+        RP["RoutingPolicy<br/>───────────────<br/>Business logic"]
+    end
+
+    subgraph ABSTRACTIONS ["⬜ ABSTRACTIONS (Interfaces)"]
+        ICR["IChannelRegistry"]
+        ICEM["ICEMResolver"]
+        IDB["IDatabase"]
+    end
+
+    subgraph LOW ["🔶 LOW-LEVEL IMPLEMENTATIONS"]
+        CR_SF["SnowflakeChannelRegistry"]
+        CR_ENV["EnvChannelRegistry"]
+        CEM_SF["SnowflakeCEMResolver"]
+        CEM_CRM["SalesforceCEMResolver"]
+    end
+
+    RP --> ICR
+    RP --> ICEM
+    
+    ICR -.-> CR_SF
+    ICR -.-> CR_ENV
+    ICEM -.-> CEM_SF
+    ICEM -.-> CEM_CRM
+
+    CR_SF --> IDB
+    CEM_SF --> IDB
+
+    style HIGH fill:#3B82F6,stroke:#2563EB,color:#fff
+    style ABSTRACTIONS fill:#F3F4F6,stroke:#9CA3AF,color:#111
+    style LOW fill:#F97316,stroke:#EA580C,color:#fff
+```
+
+**Why this matters:**
+- Swap `SnowflakeCEMResolver` for `SalesforceCEMResolver` without changing `RoutingPolicy`
+- Test with `MockChannelRegistry` without hitting real Slack
+- Configuration-driven: environment variables select implementation
+
+### Design Validation: Why This Is Correct
+
+| Concern | Design Decision | Reasoning |
+|---------|-----------------|-----------|
+| **Channels must be pre-configured** | `ChannelRegistry` loads from config/DB at startup | Webhooks need channel IDs upfront; runtime creation requires admin scope |
+| **CEM visibility isolation** | `CEMResolver` maps principal → CEM | Security: CEM only sees their accounts; query returns only assigned campaigns |
+| **Rule extensibility** | `RoutingRule` abstraction with priority order | Business rules change frequently; OCP prevents regression |
+| **Database flexibility** | `IDatabase` abstraction | Snowflake today, Salesforce tomorrow; DIP enables swap |
+| **Testability** | All dependencies injected | Unit test `RoutingPolicy` with mocks; no Slack/DB calls |
+| **Health checks** | `ChannelRegistry.verify_membership()` | Fail-fast on startup if bot not in channels |
+
+### Component Diagram
+
+```mermaid
+flowchart TB
+    subgraph ENTRY ["📥 ENTRY POINT"]
+        WH["Webhook Handler<br/>/webhook/campaign-created"]
+    end
+
+    subgraph ROUTING ["🔀 ROUTING LAYER"]
+        direction TB
+        RP["RoutingPolicy"]
+        
+        subgraph RULES ["📋 Rules (Priority Order)"]
+            R1["1. UrgentRule"]
+            R2["2. HighValueRule"]
+            R3["3. DefaultRule"]
+        end
+        
+        RP --> R1
+        RP --> R2
+        RP --> R3
+    end
+
+    subgraph RESOLUTION ["🔍 RESOLUTION LAYER"]
+        CR["ChannelRegistry"]
+        CEM["CEMResolver"]
+    end
+
+    subgraph DATA ["💾 DATA LAYER"]
+        SNOW["Snowflake<br/>cem_assignments<br/>cem_channel_config"]
+        SFDC["Salesforce<br/>(future)"]
+    end
+
+    subgraph DISPATCH ["📤 DISPATCH LAYER"]
+        MD["MessageDispatcher"]
+        SLACK["Slack API"]
+    end
+
+    WH -->|"Campaign"| RP
+    R1 --> CR
+    R2 --> CR
+    R3 --> CEM
+    CEM --> CR
+    
+    CR --> SNOW
+    CEM --> SNOW
+    CR -.-> SFDC
+    CEM -.-> SFDC
+    
+    RP -->|"Decision"| MD
+    MD --> SLACK
+
+    style ENTRY fill:#22C55E,stroke:#16A34A,color:#fff
+    style ROUTING fill:#3B82F6,stroke:#2563EB,color:#fff
+    style RESOLUTION fill:#F97316,stroke:#EA580C,color:#fff
+    style DATA fill:#8B5CF6,stroke:#7C3AED,color:#fff
+    style DISPATCH fill:#4A154B,stroke:#611f69,color:#fff
+```
+
+### Test Strategy
+
+| Layer | Test Type | What to Verify |
+|-------|-----------|----------------|
+| `RoutingPolicy` | Unit | Rules evaluated in order; correct destination returned |
+| `ChannelRegistry` | Unit | Channel lookup by type/vertical works; unknown returns default |
+| `CEMResolver` | Unit | Principal → CEM mapping correct; missing returns None |
+| `MessageDispatcher` | Integration | Messages post to Slack; errors handled gracefully |
+| End-to-End | Contract | Webhook → Routing → Dispatch works with test campaign |
+
+```python
+# Example unit test for RoutingPolicy
+def test_urgent_campaigns_go_to_urgent_channel():
+    registry = MockChannelRegistry(urgent_channel="C0URGENT")
+    resolver = MockCEMResolver()
+    policy = RoutingPolicy(
+        registry=registry,
+        resolver=resolver,
+        rules=[UrgentRule(), DefaultRule()]
+    )
+    
+    campaign = Campaign(urgent=True, total_budget=10000)
+    decision = policy.evaluate(campaign)
+    
+    assert decision.destination == "C0URGENT"
+    assert decision.rule_applied == "UrgentRule"
+
+
+def test_high_value_campaigns_go_to_vp_channel():
+    registry = MockChannelRegistry(vp_channel="C0VP")
+    resolver = MockCEMResolver()
+    policy = RoutingPolicy(
+        registry=registry,
+        resolver=resolver,
+        rules=[HighValueRule(threshold=250000), DefaultRule()]
+    )
+    
+    campaign = Campaign(urgent=False, total_budget=500000)
+    decision = policy.evaluate(campaign)
+    
+    assert decision.destination == "C0VP"
+    assert decision.rule_applied == "HighValueRule"
+```
+
+---
+
 ### Scaling Configuration
 
 ```bash
