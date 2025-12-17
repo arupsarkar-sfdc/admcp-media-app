@@ -12,6 +12,7 @@ import os
 import re
 import logging
 import asyncio
+from datetime import datetime, timezone
 from typing import Optional
 
 from slack_bolt.async_app import AsyncApp
@@ -150,6 +151,16 @@ def register_handlers(app: AsyncApp):
                     text=response.get("text", ""),
                     thread_ts=thread_ts
                 )
+            
+            # Check if there's a pending CEM summary to post
+            cem_summary = agent.get_pending_cem_summary()
+            if cem_summary:
+                # Post CEM approval request to the channel
+                await say(
+                    blocks=cem_summary.to_slack_blocks(),
+                    text=f"Order {cem_summary.media_buy_id} pending CEM approval",
+                    thread_ts=thread_ts
+                )
                 
         except Exception as e:
             logger.error(f"Error handling mention: {e}")
@@ -235,6 +246,14 @@ def register_handlers(app: AsyncApp):
                 await say(
                     blocks=format_text_response(response.get("text", "I'm not sure how to respond.")),
                     text=response.get("text", "")
+                )
+            
+            # Check if there's a pending CEM summary to post
+            cem_summary = agent.get_pending_cem_summary()
+            if cem_summary:
+                await say(
+                    blocks=cem_summary.to_slack_blocks(),
+                    text=f"Order {cem_summary.media_buy_id} pending CEM approval"
                 )
                 
         except Exception as e:
@@ -327,6 +346,413 @@ def register_handlers(app: AsyncApp):
         else:
             await say(text=response.get("text", "Product selected."))
     
+    # ================================================================
+    # CEM APPROVAL WORKFLOW HANDLERS
+    # Human-in-the-loop approval/rejection for Yahoo internal workflow
+    # ================================================================
+    
+    @app.action(re.compile(r"cem_approve_.*"))
+    async def handle_cem_approve(ack, action, say, body, client):
+        """
+        Handle CEM approval button click.
+        
+        This is Yahoo's INTERNAL workflow - not part of AdCP protocol.
+        After approval:
+        1. Update order status in Snowflake
+        2. Log to audit_log
+        3. (Future) Create Salesforce Opportunity
+        """
+        await ack()
+        
+        media_buy_id = action["value"]
+        user_id = body["user"]["id"]
+        user_name = body["user"].get("username", user_id)
+        channel_id = body["channel"]["id"]
+        message_ts = body.get("message", {}).get("ts")
+        
+        logger.info(f"CEM APPROVAL: {media_buy_id} by {user_name}")
+        
+        try:
+            # Import automation modules
+            from automation import AuditLogger
+            
+            # Log approval to audit
+            audit = AuditLogger()
+            audit.log_approved(
+                media_buy_id=media_buy_id,
+                approved_by=user_name,
+                comments="Approved via Slack"
+            )
+            
+            # Update order status in Snowflake
+            try:
+                from services.snowflake_write_service import SnowflakeWriteService
+                sf_write = SnowflakeWriteService()
+                # Update status to 'active'
+                conn = sf_write._get_connection()
+                if conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        UPDATE media_buys 
+                        SET status = 'active', updated_at = CURRENT_TIMESTAMP
+                        WHERE media_buy_id = %s
+                    """, (media_buy_id,))
+                    conn.commit()
+                    cursor.close()
+                    logger.info(f"Updated media_buy status to 'active': {media_buy_id}")
+            except Exception as e:
+                logger.error(f"Failed to update status: {e}")
+            
+            # --------------------------------------------------------
+            # FUTURE: Trigger Opportunity creation here after approval
+            # agent = app._advertising_agent
+            # opp_result = agent._create_opportunity_for_campaign(...)
+            # --------------------------------------------------------
+            
+            # Update the original message to show approval
+            approval_blocks = [
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "✅ ORDER APPROVED",
+                        "emoji": True
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Order ID:* `{media_buy_id}`\n*Approved by:* <@{user_id}>\n*Status:* Active"
+                    }
+                },
+                {
+                    "type": "context",
+                    "elements": [
+                        {
+                            "type": "mrkdwn",
+                            "text": f"Approved at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                        }
+                    ]
+                }
+            ]
+            
+            if message_ts:
+                await client.chat_update(
+                    channel=channel_id,
+                    ts=message_ts,
+                    blocks=approval_blocks,
+                    text=f"Order {media_buy_id} approved"
+                )
+            else:
+                await say(blocks=approval_blocks, text=f"Order {media_buy_id} approved")
+                
+        except ImportError as e:
+            logger.error(f"Automation module not found: {e}")
+            await say(text=f"⚠️ Could not process approval: automation module not available")
+        except Exception as e:
+            logger.error(f"Error processing approval: {e}")
+            await say(text=f"⚠️ Error processing approval: {str(e)}")
+    
+    @app.action(re.compile(r"cem_reject_.*"))
+    async def handle_cem_reject(ack, action, say, body, client):
+        """
+        Handle CEM rejection button click.
+        
+        Opens a modal to collect rejection reason.
+        """
+        await ack()
+        
+        media_buy_id = action["value"]
+        user_id = body["user"]["id"]
+        trigger_id = body["trigger_id"]
+        
+        logger.info(f"CEM REJECTION initiated: {media_buy_id} by {user_id}")
+        
+        # Open modal to collect rejection reason
+        try:
+            await client.views_open(
+                trigger_id=trigger_id,
+                view={
+                    "type": "modal",
+                    "callback_id": f"cem_reject_submit_{media_buy_id}",
+                    "title": {"type": "plain_text", "text": "Reject Order"},
+                    "submit": {"type": "plain_text", "text": "Reject"},
+                    "close": {"type": "plain_text", "text": "Cancel"},
+                    "blocks": [
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": f"*Order ID:* `{media_buy_id}`\n\nPlease provide a reason for rejection:"
+                            }
+                        },
+                        {
+                            "type": "input",
+                            "block_id": "rejection_reason",
+                            "element": {
+                                "type": "plain_text_input",
+                                "action_id": "reason_input",
+                                "multiline": True,
+                                "placeholder": {"type": "plain_text", "text": "Enter rejection reason..."}
+                            },
+                            "label": {"type": "plain_text", "text": "Rejection Reason"}
+                        }
+                    ],
+                    "private_metadata": f"{body['channel']['id']}|{body.get('message', {}).get('ts', '')}"
+                }
+            )
+        except Exception as e:
+            logger.error(f"Failed to open reject modal: {e}")
+            await say(text=f"⚠️ Could not open rejection form: {str(e)}")
+    
+    @app.view(re.compile(r"cem_reject_submit_.*"))
+    async def handle_cem_reject_submit(ack, view, body, client):
+        """Handle rejection modal submission"""
+        await ack()
+        
+        # Extract media_buy_id from callback_id
+        callback_id = view["callback_id"]
+        media_buy_id = callback_id.replace("cem_reject_submit_", "")
+        
+        user_id = body["user"]["id"]
+        user_name = body["user"].get("username", user_id)
+        
+        # Get rejection reason
+        reason = view["state"]["values"]["rejection_reason"]["reason_input"]["value"]
+        
+        # Get original channel/message from private_metadata
+        private_metadata = view.get("private_metadata", "").split("|")
+        channel_id = private_metadata[0] if len(private_metadata) > 0 else None
+        message_ts = private_metadata[1] if len(private_metadata) > 1 else None
+        
+        logger.info(f"CEM REJECTION: {media_buy_id} by {user_name} - {reason}")
+        
+        try:
+            from automation import AuditLogger
+            
+            # Log rejection
+            audit = AuditLogger()
+            audit.log_rejected(
+                media_buy_id=media_buy_id,
+                rejected_by=user_name,
+                reason=reason
+            )
+            
+            # Update order status in Snowflake
+            try:
+                from services.snowflake_write_service import SnowflakeWriteService
+                sf_write = SnowflakeWriteService()
+                conn = sf_write._get_connection()
+                if conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        UPDATE media_buys 
+                        SET status = 'rejected', updated_at = CURRENT_TIMESTAMP
+                        WHERE media_buy_id = %s
+                    """, (media_buy_id,))
+                    conn.commit()
+                    cursor.close()
+            except Exception as e:
+                logger.error(f"Failed to update status: {e}")
+            
+            # Post rejection message
+            rejection_blocks = [
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "❌ ORDER REJECTED",
+                        "emoji": True
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Order ID:* `{media_buy_id}`\n*Rejected by:* <@{user_id}>\n*Reason:* {reason}"
+                    }
+                },
+                {
+                    "type": "context",
+                    "elements": [
+                        {
+                            "type": "mrkdwn",
+                            "text": f"Rejected at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                        }
+                    ]
+                }
+            ]
+            
+            if channel_id and message_ts:
+                await client.chat_update(
+                    channel=channel_id,
+                    ts=message_ts,
+                    blocks=rejection_blocks,
+                    text=f"Order {media_buy_id} rejected"
+                )
+            elif channel_id:
+                await client.chat_postMessage(
+                    channel=channel_id,
+                    blocks=rejection_blocks,
+                    text=f"Order {media_buy_id} rejected"
+                )
+                
+        except Exception as e:
+            logger.error(f"Error processing rejection: {e}")
+    
+    @app.action(re.compile(r"cem_review_.*"))
+    async def handle_cem_review(ack, action, say, body, client):
+        """
+        Handle CEM review/changes request button click.
+        
+        Opens a modal to collect review comments.
+        """
+        await ack()
+        
+        media_buy_id = action["value"]
+        user_id = body["user"]["id"]
+        trigger_id = body["trigger_id"]
+        
+        logger.info(f"CEM REVIEW requested: {media_buy_id} by {user_id}")
+        
+        try:
+            await client.views_open(
+                trigger_id=trigger_id,
+                view={
+                    "type": "modal",
+                    "callback_id": f"cem_review_submit_{media_buy_id}",
+                    "title": {"type": "plain_text", "text": "Request Changes"},
+                    "submit": {"type": "plain_text", "text": "Submit"},
+                    "close": {"type": "plain_text", "text": "Cancel"},
+                    "blocks": [
+                        {
+                            "type": "section",
+                            "text": {
+                                "type": "mrkdwn",
+                                "text": f"*Order ID:* `{media_buy_id}`\n\nDescribe the changes needed:"
+                            }
+                        },
+                        {
+                            "type": "input",
+                            "block_id": "review_comments",
+                            "element": {
+                                "type": "plain_text_input",
+                                "action_id": "comments_input",
+                                "multiline": True,
+                                "placeholder": {"type": "plain_text", "text": "What changes are needed?"}
+                            },
+                            "label": {"type": "plain_text", "text": "Changes Required"}
+                        }
+                    ],
+                    "private_metadata": f"{body['channel']['id']}|{body.get('message', {}).get('ts', '')}"
+                }
+            )
+        except Exception as e:
+            logger.error(f"Failed to open review modal: {e}")
+            await say(text=f"⚠️ Could not open review form: {str(e)}")
+    
+    @app.view(re.compile(r"cem_review_submit_.*"))
+    async def handle_cem_review_submit(ack, view, body, client):
+        """Handle review modal submission"""
+        await ack()
+        
+        callback_id = view["callback_id"]
+        media_buy_id = callback_id.replace("cem_review_submit_", "")
+        
+        user_id = body["user"]["id"]
+        user_name = body["user"].get("username", user_id)
+        
+        comments = view["state"]["values"]["review_comments"]["comments_input"]["value"]
+        
+        private_metadata = view.get("private_metadata", "").split("|")
+        channel_id = private_metadata[0] if len(private_metadata) > 0 else None
+        message_ts = private_metadata[1] if len(private_metadata) > 1 else None
+        
+        logger.info(f"CEM REVIEW: {media_buy_id} by {user_name} - {comments}")
+        
+        try:
+            from automation import AuditLogger
+            
+            audit = AuditLogger()
+            audit.log_review_requested(
+                media_buy_id=media_buy_id,
+                requested_by=user_name,
+                comments=comments
+            )
+            
+            # Update order status to pending_changes
+            try:
+                from services.snowflake_write_service import SnowflakeWriteService
+                sf_write = SnowflakeWriteService()
+                conn = sf_write._get_connection()
+                if conn:
+                    cursor = conn.cursor()
+                    cursor.execute("""
+                        UPDATE media_buys 
+                        SET status = 'pending_changes', updated_at = CURRENT_TIMESTAMP
+                        WHERE media_buy_id = %s
+                    """, (media_buy_id,))
+                    conn.commit()
+                    cursor.close()
+            except Exception as e:
+                logger.error(f"Failed to update status: {e}")
+            
+            review_blocks = [
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "📝 CHANGES REQUESTED",
+                        "emoji": True
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Order ID:* `{media_buy_id}`\n*Requested by:* <@{user_id}>\n*Status:* Pending Changes"
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": f"*Changes Needed:*\n{comments}"
+                    }
+                },
+                {
+                    "type": "context",
+                    "elements": [
+                        {
+                            "type": "mrkdwn",
+                            "text": f"Review requested at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}"
+                        }
+                    ]
+                }
+            ]
+            
+            if channel_id and message_ts:
+                await client.chat_update(
+                    channel=channel_id,
+                    ts=message_ts,
+                    blocks=review_blocks,
+                    text=f"Order {media_buy_id} - changes requested"
+                )
+            elif channel_id:
+                await client.chat_postMessage(
+                    channel=channel_id,
+                    blocks=review_blocks,
+                    text=f"Order {media_buy_id} - changes requested"
+                )
+                
+        except Exception as e:
+            logger.error(f"Error processing review request: {e}")
+    
+    # ================================================================
+    # END CEM WORKFLOW HANDLERS
+    # ================================================================
+    
     # Log unhandled events for debugging
     @app.event("message")
     async def handle_message_default(event, logger):
@@ -347,4 +773,5 @@ async def run_socket_mode(app: AsyncApp):
     handler = AsyncSocketModeHandler(app, app_token)
     logger.info("Starting Slack app in Socket Mode...")
     await handler.start_async()
+
 

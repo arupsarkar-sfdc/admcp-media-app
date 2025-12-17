@@ -3,6 +3,10 @@ Slack Advertising Agent
 
 Adapted from advertising_agent.py for Slack context.
 Provides per-user conversation history and Slack-optimized responses.
+
+Now includes Salesforce CRM integration:
+- Automatically creates Opportunity when campaign is created
+- Links campaign_id to Opportunity via Description field
 """
 
 import os
@@ -10,6 +14,8 @@ import json
 import logging
 from typing import List, Dict, Any, Optional
 from collections import defaultdict
+from pathlib import Path
+from datetime import date, timedelta
 
 # Import MCP client
 from fastmcp import Client
@@ -21,7 +27,78 @@ try:
 except ImportError:
     HAS_ANTHROPIC = False
 
+# Import Salesforce client
+try:
+    from simple_salesforce import Salesforce
+    HAS_SALESFORCE = True
+except ImportError:
+    HAS_SALESFORCE = False
+
 logger = logging.getLogger(__name__)
+
+
+def get_salesforce_client() -> Optional[Salesforce]:
+    """
+    Initialize Salesforce client using JWT Bearer Flow.
+    Returns None if not configured or connection fails.
+    """
+    if not HAS_SALESFORCE:
+        logger.warning("simple-salesforce not installed, Salesforce integration disabled")
+        return None
+    
+    # Check required env vars
+    username = os.environ.get('SFDC_USER_NAME')
+    consumer_key = os.environ.get('SFDC_CONSUMER_KEY')
+    login_url = os.environ.get('SFDC_LOGIN_URL', 'https://login.salesforce.com')
+    
+    if not username or not consumer_key:
+        logger.warning("SFDC credentials not configured, Salesforce integration disabled")
+        return None
+    
+    # Get private key - prefer file, fallback to inline
+    private_key = None
+    key_file = os.environ.get('SFDC_PRIVATE_KEY_FILE')
+    
+    if key_file:
+        key_path = Path(key_file)
+        if not key_path.is_absolute():
+            # Relative to yahoo_mcp_server folder
+            key_path = Path(__file__).parent.parent / key_file
+        
+        if key_path.exists():
+            private_key = key_path.read_text()
+            logger.info(f"Loaded Salesforce private key from: {key_path}")
+        else:
+            logger.warning(f"Salesforce key file not found: {key_path}")
+    else:
+        private_key = os.environ.get('SFDC_PRIVATE_KEY')
+        if private_key and '\\n' in private_key:
+            private_key = private_key.replace('\\n', '\n')
+    
+    if not private_key:
+        logger.warning("SFDC_PRIVATE_KEY not configured, Salesforce integration disabled")
+        return None
+    
+    # Determine domain from login URL
+    if 'test.salesforce.com' in login_url:
+        domain = 'test'
+    elif 'login.salesforce.com' in login_url:
+        domain = 'login'
+    else:
+        domain = login_url.replace('https://', '').replace('http://', '').split('.')[0]
+    
+    try:
+        sf = Salesforce(
+            username=username,
+            consumer_key=consumer_key,
+            privatekey=private_key,
+            domain=domain
+        )
+        logger.info(f"Salesforce connected: {sf.sf_instance}")
+        return sf
+    except Exception as e:
+        logger.error(f"Failed to connect to Salesforce: {e}")
+        return None
 
 
 class ConversationStore:
@@ -72,6 +149,11 @@ You have access to Yahoo's advertising platform via MCP tools:
 - update_media_buy: Modify campaigns
 - get_media_buy_report: Get analytics
 
+SALESFORCE CRM INTEGRATION:
+When you successfully create a campaign, a Salesforce Opportunity is AUTOMATICALLY created and linked.
+The Opportunity info will appear in the tool result - include it in your response to the user.
+Always mention both the campaign AND the Opportunity when reporting success.
+
 Guidelines for Slack responses:
 1. Be CONCISE - Slack messages should be scannable
 2. Use bullet points and formatting (*bold*, `code`)
@@ -110,6 +192,13 @@ Be helpful and enthusiastic!"""
         
         self.ai_client = anthropic.Anthropic(api_key=api_key)
         self.model = "claude-sonnet-4-5-20250929"
+        
+        # Initialize Salesforce client (optional - for CRM integration)
+        self.sf_client = get_salesforce_client()
+        if self.sf_client:
+            logger.info("Salesforce CRM integration enabled")
+        else:
+            logger.info("Salesforce CRM integration disabled (not configured)")
         
         logger.info(f"SlackAdvertisingAgent initialized with MCP URL: {mcp_url}")
     
@@ -290,6 +379,31 @@ Be helpful and enthusiastic!"""
                             "result": tool_result
                         })
                         
+                        # ================================================================
+                        # 🎯 POST-CAMPAIGN CREATION HOOK
+                        # ================================================================
+                        if tool_name == "create_media_buy" and "error" not in tool_result.lower():
+                            
+                            # --------------------------------------------------------
+                            # COMMENTED OUT: CRM Opportunity Creation
+                            # Keeping for later use - will be triggered after CEM approval
+                            # --------------------------------------------------------
+                            # opp_result = self._create_opportunity_for_campaign(tool_result, tool_input)
+                            # if opp_result:
+                            #     tool_results.append({
+                            #         "tool": "salesforce_opportunity",
+                            #         "input": {"campaign_id": tool_input.get("campaign_name", "")},
+                            #         "result": opp_result
+                            #     })
+                            #     tool_result += f"\n\n✅ SALESFORCE OPPORTUNITY CREATED:\n- ID: {opp_result['opportunity_id']}\n- URL: {opp_result['opportunity_url']}"
+                            # --------------------------------------------------------
+                            
+                            # 🔄 CEM ORCHESTRATION: Trigger Yahoo internal approval workflow
+                            # This is INTERNAL to Yahoo - not part of AdCP protocol
+                            cem_result = await self._trigger_cem_workflow(tool_result, tool_input)
+                            if cem_result:
+                                tool_result += f"\n\n📋 ORDER SUBMITTED FOR CEM REVIEW:\n{cem_result.get('message', 'Pending approval')}"
+                        
                         tool_result_messages.append({
                             "type": "tool_result",
                             "tool_use_id": tool_id,
@@ -341,4 +455,220 @@ Be helpful and enthusiastic!"""
         context_key = f"{user_id}:{channel_id}:{thread_ts or 'main'}"
         self.conversations.clear(context_key)
         logger.info(f"Cleared conversation for {context_key}")
+    
+    def _create_opportunity_for_campaign(
+        self, 
+        campaign_result: str, 
+        tool_input: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Create a Salesforce Opportunity linked to a campaign.
+        
+        Called automatically after successful create_media_buy.
+        Uses Acme Partners as default account (PoC).
+        
+        Returns:
+            Dict with opportunity_id and url, or None if failed
+        """
+        if not self.sf_client:
+            logger.info("Salesforce not configured, skipping Opportunity creation")
+            return None
+        
+        try:
+            # Parse campaign result to extract details
+            result_data = json.loads(campaign_result) if isinstance(campaign_result, str) else campaign_result
+            
+            # Extract campaign info
+            campaign_id = result_data.get('campaign_id', 'unknown')
+            campaign_name = result_data.get('campaign_name', tool_input.get('campaign_name', 'Campaign'))
+            
+            # Get budget from tool input or result
+            budget = tool_input.get('budget', 0)
+            if isinstance(budget, str):
+                budget = float(budget.replace('$', '').replace(',', ''))
+            
+            # Find Acme Partners account (PoC hardcoded)
+            account_query = self.sf_client.query(
+                "SELECT Id, Name FROM Account WHERE Name LIKE '%Acme%' LIMIT 1"
+            )
+            
+            if account_query['totalSize'] == 0:
+                logger.warning("Acme account not found, creating Opportunity without Account link")
+                account_id = None
+            else:
+                account_id = account_query['records'][0]['Id']
+                logger.info(f"Found Account: {account_query['records'][0]['Name']}")
+            
+            # Create Opportunity
+            close_date = (date.today() + timedelta(days=90)).isoformat()
+            
+            opp_data = {
+                'Name': f"{campaign_name} - Yahoo Advertising",
+                'StageName': 'Prospecting',
+                'CloseDate': close_date,
+                'Amount': budget,
+                'Description': f"Auto-created from Slack MCP integration.\n\nCampaign ID: {campaign_id}\nCreated via AdCP workflow."
+            }
+            
+            if account_id:
+                opp_data['AccountId'] = account_id
+            
+            logger.info(f"Creating Opportunity: {opp_data['Name']}")
+            result = self.sf_client.Opportunity.create(opp_data)
+            
+            if result.get('success'):
+                opp_id = result['id']
+                opp_url = f"https://{self.sf_client.sf_instance}/lightning/r/Opportunity/{opp_id}/view"
+                
+                logger.info(f"✅ Opportunity created: {opp_id}")
+                
+                return {
+                    'opportunity_id': opp_id,
+                    'opportunity_name': opp_data['Name'],
+                    'opportunity_url': opp_url,
+                    'amount': budget,
+                    'stage': 'Prospecting',
+                    'account': account_query['records'][0]['Name'] if account_id else None
+                }
+            else:
+                logger.error(f"Failed to create Opportunity: {result}")
+                return None
+                
+        except json.JSONDecodeError:
+            logger.warning("Could not parse campaign result, skipping Opportunity")
+            return None
+        except Exception as e:
+            logger.error(f"Error creating Opportunity: {e}")
+            return None
+    
+    async def _trigger_cem_workflow(
+        self,
+        campaign_result: str,
+        tool_input: Dict[str, Any]
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Trigger Yahoo's internal CEM approval workflow.
+        
+        This is Yahoo's internal process - NOT part of AdCP protocol.
+        
+        Steps:
+        1. Parse media_buy_id from result
+        2. Run SQL validation against master tables
+        3. Log everything to audit_log
+        4. Generate AI summary for CEM review
+        5. Post to Slack for human approval (approve/reject/review)
+        
+        Args:
+            campaign_result: JSON string result from create_media_buy
+            tool_input: Original tool input parameters
+            
+        Returns:
+            Dict with workflow status or None if failed
+        """
+        try:
+            # Parse result to get media_buy_id
+            result_data = json.loads(campaign_result)
+            media_buy_id = result_data.get('media_buy_id')
+            
+            if not media_buy_id:
+                logger.warning("No media_buy_id in result, skipping CEM workflow")
+                return None
+            
+            logger.info(f"🔄 Starting CEM workflow for media_buy_id: {media_buy_id}")
+            
+            # Import automation modules
+            from automation import OrderValidator, AuditLogger, CEMAgent
+            
+            # Step 1: Validate order against master tables
+            validator = OrderValidator()
+            validation_result = validator.validate_order(media_buy_id)
+            
+            logger.info(f"Validation result: {validation_result.summary}")
+            
+            # Get full order details
+            order_details = validator.get_order_details(media_buy_id)
+            
+            if not order_details:
+                logger.error(f"Could not retrieve order details for {media_buy_id}")
+                return {"message": "⚠️ Validation failed - could not retrieve order"}
+            
+            # Step 2: Log validation to audit_log
+            audit = AuditLogger()
+            audit.log_validation(
+                media_buy_id=media_buy_id,
+                validation_result={
+                    'all_passed': validation_result.all_passed,
+                    'summary': validation_result.summary,
+                    'checks': [
+                        {
+                            'check_name': c.check_name,
+                            'passed': c.passed,
+                            'message': c.message
+                        }
+                        for c in validation_result.checks
+                    ]
+                },
+                principal_id=order_details.get('principal_id'),
+                tenant_id='yahoo'  # Yahoo's tenant
+            )
+            
+            # Step 3: Generate AI summary for CEM
+            cem_agent = CEMAgent()
+            cem_summary = cem_agent.generate_summary(
+                order_details=order_details,
+                validation_result={
+                    'all_passed': validation_result.all_passed,
+                    'summary': validation_result.summary,
+                    'checks': [
+                        {
+                            'check_name': c.check_name,
+                            'passed': c.passed,
+                            'message': c.message,
+                            'details': c.details
+                        }
+                        for c in validation_result.checks
+                    ]
+                }
+            )
+            
+            # Step 4: Log approval request
+            audit.log_approval_requested(
+                media_buy_id=media_buy_id,
+                order_details=order_details,
+                validation_summary=cem_summary.order_summary,
+                cem_channel='slack_cem'
+            )
+            
+            # Step 5: Post to Slack for CEM approval
+            # The blocks will be posted in the response
+            # Store the summary for posting
+            self._pending_cem_summary = cem_summary
+            
+            logger.info(f"✅ CEM workflow initiated for {media_buy_id}")
+            logger.info(f"   Recommendation: {cem_summary.recommendation.action}")
+            
+            return {
+                "message": f"Order submitted for CEM review. Recommendation: {cem_summary.recommendation.action.upper()}",
+                "media_buy_id": media_buy_id,
+                "validation_passed": validation_result.all_passed,
+                "recommendation": cem_summary.recommendation.action,
+                "risk_level": cem_summary.recommendation.risk_level
+            }
+            
+        except json.JSONDecodeError:
+            logger.warning("Could not parse campaign result for CEM workflow")
+            return None
+        except ImportError as e:
+            logger.error(f"Could not import automation modules: {e}")
+            return {"message": "⚠️ CEM workflow not available - automation module not found"}
+        except Exception as e:
+            logger.error(f"Error in CEM workflow: {e}")
+            return {"message": f"⚠️ CEM workflow error: {str(e)}"}
+    
+    def get_pending_cem_summary(self):
+        """Get pending CEM summary for posting to Slack"""
+        summary = getattr(self, '_pending_cem_summary', None)
+        if summary:
+            self._pending_cem_summary = None  # Clear after retrieval
+        return summary
 
