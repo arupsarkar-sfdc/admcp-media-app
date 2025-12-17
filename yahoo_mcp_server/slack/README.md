@@ -820,10 +820,428 @@ git remote add adcp-slack-app https://git.heroku.com/adcp-slack-app.git
 
 ---
 
+## Enterprise Scaling: 100 CEMs with Visibility Rules
+
+### The Challenge
+
+Real-world scenario:
+- **100 Yahoo Account Directors** (Campaign Escalation Managers)
+- **500+ agencies** creating campaigns
+- **Thousands of campaigns** per month
+- Each CEM should only see campaigns for **their assigned accounts**
+
+### Visibility Architecture
+
+```mermaid
+flowchart TB
+    subgraph AGENCIES ["🟢 AGENCIES (External)"]
+        A1["🏢 Nike Agency"]
+        A2["🏢 Adidas Agency"]
+        A3["🏢 Disney Agency"]
+        A_MORE["🏢 ... 500+ Agencies"]
+    end
+
+    subgraph STREAMLIT ["📊 STREAMLIT APPS"]
+        S1["Campaign Planner<br/>─────────────<br/>Webhook → Slack"]
+    end
+
+    subgraph ROUTING ["🔀 ROUTING LAYER"]
+        LOOKUP["Account Lookup<br/>───────────────<br/>principal_id → CEM<br/>Query Snowflake/CRM"]
+        ROUTER["CEM Router<br/>───────────────<br/>CEM → Slack User ID<br/>CEM → Channel"]
+    end
+
+    subgraph SLACK ["💬 SLACK (100 CEMs)"]
+        direction LR
+        CEM1["👤 CEM: Sports<br/>@john.smith<br/>─────────────<br/>Nike, Adidas,<br/>Under Armour"]
+        CEM2["👤 CEM: Entertainment<br/>@jane.doe<br/>─────────────<br/>Disney, Netflix,<br/>Warner Bros"]
+        CEM3["👤 CEM: Finance<br/>@bob.jones<br/>─────────────<br/>Fidelity, Chase,<br/>AmEx"]
+        CEM_MORE["👤 ... (x97 CEMs)<br/>─────────────<br/>By Vertical"]
+    end
+
+    A1 --> S1
+    A2 --> S1
+    A3 --> S1
+    A_MORE --> S1
+
+    S1 -->|"Webhook<br/>+ principal_id"| LOOKUP
+    LOOKUP -->|"Find CEM"| ROUTER
+    
+    ROUTER -->|"Nike → Sports"| CEM1
+    ROUTER -->|"Disney → Ent"| CEM2
+    ROUTER -->|"Fidelity → Fin"| CEM3
+
+    style AGENCIES fill:#22C55E,stroke:#16A34A,color:#fff
+    style STREAMLIT fill:#3B82F6,stroke:#2563EB,color:#fff
+    style ROUTING fill:#F97316,stroke:#EA580C,color:#fff
+    style SLACK fill:#4A154B,stroke:#611f69,color:#fff
+```
+
+### Visibility Rules Data Model
+
+```
+┌────────────────────────────────────────────────────────────────────┐
+│  SNOWFLAKE: cem_assignments                                        │
+├────────────────────────────────────────────────────────────────────┤
+│  id            │ principal_id    │ cem_user_id    │ cem_slack_id   │
+│  ──────────────┼─────────────────┼────────────────┼────────────────│
+│  1             │ nike_global     │ john.smith     │ U0A1B2C3D4     │
+│  2             │ adidas_na       │ john.smith     │ U0A1B2C3D4     │
+│  3             │ disney_emea     │ jane.doe       │ U0E5F6G7H8     │
+│  4             │ netflix_apac    │ jane.doe       │ U0E5F6G7H8     │
+└────────────────────────────────────────────────────────────────────┘
+```
+
+### Routing Flow
+
+```mermaid
+sequenceDiagram
+    box rgb(34, 197, 94) Agency
+        participant A as 🏢 Nike Agency
+    end
+    
+    box rgb(59, 130, 246) Streamlit
+        participant S as 📊 Campaign Planner
+    end
+    
+    box rgb(249, 115, 22) Routing
+        participant W as 🔗 Webhook Handler
+        participant R as 🔀 CEM Router
+    end
+    
+    box rgb(74, 21, 75) Slack
+        participant CEM as 👤 John Smith<br/>(Sports CEM)
+    end
+
+    A->>S: Create Nike campaign $250K
+    S->>S: create_media_buy → Snowflake
+    
+    rect rgb(255, 237, 213)
+        Note over S,R: Step 1: Webhook with Routing
+        S->>W: POST /webhook/campaign-created<br/>{principal_id: "nike_global"}
+        W->>R: Lookup CEM for "nike_global"
+        R->>R: Query cem_assignments<br/>→ john.smith / U0A1B2C3D4
+    end
+    
+    rect rgb(233, 213, 255)
+        Note over R,CEM: Step 2: Targeted Notification
+        R->>CEM: Post to DM: U0A1B2C3D4<br/>or Channel with @mention
+    end
+    
+    Note over CEM: Only John sees Nike campaigns<br/>Jane never sees Nike campaigns
+```
+
+### Multi-Channel Strategy
+
+```mermaid
+flowchart LR
+    subgraph CAMPAIGNS ["📋 INCOMING CAMPAIGNS"]
+        C1["Nike $50K"]
+        C2["Nike $500K"]
+        C3["Disney $25K"]
+        C4["Emergency Override"]
+    end
+
+    subgraph ROUTING ["🔀 ROUTING RULES"]
+        NORMAL["Standard<br/>→ CEM DM"]
+        HIGH["High Value (>$250K)<br/>→ CEM + VP Channel"]
+        URGENT["Urgent Flag<br/>→ #cem-urgent"]
+        BROADCAST["All Hands<br/>→ #cem-all"]
+    end
+
+    subgraph SLACK ["💬 DESTINATIONS"]
+        DM["👤 CEM DM"]
+        VP_CH["#sports-vp-approvals"]
+        URGENT_CH["#cem-urgent"]
+        ALL_CH["#cem-all"]
+    end
+
+    C1 --> NORMAL --> DM
+    C2 --> HIGH --> VP_CH
+    C3 --> NORMAL --> DM
+    C4 --> URGENT --> URGENT_CH
+
+    style CAMPAIGNS fill:#22C55E,stroke:#16A34A,color:#fff
+    style ROUTING fill:#F97316,stroke:#EA580C,color:#fff
+    style SLACK fill:#4A154B,stroke:#611f69,color:#fff
+```
+
+### Scaling Configuration
+
+```bash
+# Environment Variables for Routing
+CEM_ROUTING_ENABLED=true
+CEM_DEFAULT_CHANNEL=C0123456789        # Fallback if no CEM assigned
+CEM_HIGH_VALUE_THRESHOLD=250000        # Route to VP above this
+CEM_HIGH_VALUE_CHANNEL=C0987654321     # VP approval channel
+CEM_URGENT_CHANNEL=C0URGENT123         # Urgent/escalation channel
+
+# Database connection for cem_assignments lookup
+CEM_ROUTING_DATABASE=snowflake         # or "salesforce"
+```
+
+---
+
+## Salesforce Agentforce Integration
+
+### Current State vs Future State
+
+| Aspect | Current (cem_agent.py) | Future (Agentforce) |
+|--------|------------------------|---------------------|
+| AI Runtime | Claude API (external) | Agentforce (Salesforce-native) |
+| Data Access | Snowflake direct | Data Cloud (unified) |
+| Hosting | Heroku Python | Salesforce Platform |
+| Security | API keys in env | Salesforce Identity |
+| Audit | Custom audit_log | Salesforce Shield |
+| Scalability | Heroku dynos | Hyperforce |
+
+### Agentforce Architecture
+
+```mermaid
+flowchart TB
+    subgraph SLACK ["💬 SLACK"]
+        USER["CEM receives<br/>approval request"]
+        RESPONSE["CEM sees<br/>AI summary"]
+    end
+
+    subgraph WEBHOOK ["🔗 WEBHOOK HANDLER"]
+        WH["Slack App<br/>Webhook Endpoint"]
+    end
+
+    subgraph AGENTFORCE ["🤖 SALESFORCE AGENTFORCE"]
+        TOPIC["Agentforce Topic:<br/>CEM Order Review<br/>─────────────────<br/>• Order Validation<br/>• Risk Assessment<br/>• Recommendation"]
+        
+        ACTIONS["Agentforce Actions<br/>─────────────────<br/>• validate_order<br/>• calculate_risk<br/>• generate_summary"]
+        
+        LLM["Einstein LLM<br/>─────────────────<br/>• Natural Language<br/>• Structured Output"]
+    end
+
+    subgraph DATA ["🌐 DATA CLOUD"]
+        DC["Unified Data<br/>─────────────────<br/>media_buys (Snowflake)<br/>products (Snowflake)<br/>principals (Snowflake)<br/>Accounts (CRM)<br/>Opportunities (CRM)"]
+    end
+
+    WH -->|"1️⃣ media_buy_id"| TOPIC
+    TOPIC --> ACTIONS
+    ACTIONS --> LLM
+    
+    ACTIONS <-->|"2️⃣ Query"| DC
+    
+    LLM -->|"3️⃣ Structured Response"| WH
+    WH -->|"4️⃣ Format & Post"| RESPONSE
+
+    style SLACK fill:#4A154B,stroke:#611f69,color:#fff
+    style WEBHOOK fill:#1264A3,stroke:#0b4f8a,color:#fff
+    style AGENTFORCE fill:#00A1E0,stroke:#0070D2,color:#fff
+    style DATA fill:#2E8B57,stroke:#1e6b47,color:#fff
+```
+
+### Agentforce Topic Definition
+
+```yaml
+# CEM Order Review Topic
+topic:
+  name: "CEM Order Review"
+  description: "Validate and summarize media buy orders for CEM approval"
+  
+  scope:
+    - "Review advertising campaign orders"
+    - "Validate against business rules"
+    - "Generate approval recommendations"
+    - "Never approve/reject directly - human in the loop"
+
+  actions:
+    - name: validate_order
+      description: "Validate order against master tables"
+      inputs:
+        - media_buy_id: string
+      outputs:
+        - validation_result: object
+        - all_passed: boolean
+        
+    - name: assess_risk
+      description: "Calculate risk level based on budget, client history, dates"
+      inputs:
+        - order_details: object
+        - validation_result: object
+      outputs:
+        - risk_level: enum[low, medium, high]
+        - risk_flags: array[string]
+        
+    - name: generate_summary
+      description: "Create human-readable summary for CEM"
+      inputs:
+        - order_details: object
+        - validation_result: object
+        - risk_assessment: object
+      outputs:
+        - order_summary: string
+        - recommendation: enum[approve, review, reject]
+        - confidence: enum[high, medium, low]
+        - explanation: string
+
+  instructions: |
+    You are a Campaign Escalation Manager assistant at Yahoo Advertising.
+    
+    Your role is to help human CEMs make approval decisions by:
+    1. Validating orders against business rules (via validate_order action)
+    2. Assessing risk based on budget, history, timing (via assess_risk action)  
+    3. Generating clear summaries (via generate_summary action)
+    
+    CRITICAL: You provide recommendations only. You never approve or reject.
+    The human CEM makes the final decision.
+    
+    Always explain your reasoning clearly so the CEM understands.
+```
+
+### Agentforce API Call Flow
+
+```mermaid
+sequenceDiagram
+    box rgb(18, 100, 163) Slack App
+        participant WH as 🔗 Webhook Handler
+    end
+    
+    box rgb(0, 161, 224) Salesforce
+        participant AF as 🤖 Agentforce<br/>Runtime
+        participant TOPIC as 📋 CEM Review<br/>Topic
+        participant ACTIONS as ⚡ Actions
+        participant DC as 🌐 Data Cloud
+    end
+
+    Note over WH,DC: Campaign Created → Webhook → Agentforce
+
+    WH->>AF: 1️⃣ POST /services/data/v60.0/einstein/agent<br/>{topic: "CEM_Order_Review",<br/>input: {media_buy_id: "..."}}
+    
+    AF->>TOPIC: 2️⃣ Route to Topic
+    
+    rect rgb(220, 240, 255)
+        Note over TOPIC,DC: Action Execution
+        TOPIC->>ACTIONS: validate_order(media_buy_id)
+        ACTIONS->>DC: Query products, principals, budgets
+        DC-->>ACTIONS: Validation data
+        ACTIONS-->>TOPIC: {all_passed: true, checks: [...]}
+        
+        TOPIC->>ACTIONS: assess_risk(order, validation)
+        ACTIONS->>DC: Query client history, thresholds
+        DC-->>ACTIONS: Risk data
+        ACTIONS-->>TOPIC: {risk_level: "low", flags: []}
+        
+        TOPIC->>ACTIONS: generate_summary(order, validation, risk)
+        ACTIONS-->>TOPIC: {summary: "...", recommendation: "approve"}
+    end
+    
+    AF-->>WH: 3️⃣ Structured Response<br/>{summary, recommendation, confidence}
+    
+    Note over WH: Format as Slack Blocks<br/>Post to CEM
+```
+
+### Code Changes Required
+
+```python
+# BEFORE: cem_agent.py (Claude-based)
+class CEMAgent:
+    def __init__(self):
+        self.client = anthropic.Anthropic()
+    
+    def generate_summary(self, order_details, validation):
+        # Direct Claude API call
+        response = self.client.messages.create(...)
+        return response
+
+# AFTER: agentforce_client.py (Agentforce-based)
+class AgentforceClient:
+    def __init__(self):
+        self.sf = Salesforce(...)  # OAuth/JWT connection
+    
+    async def invoke_cem_topic(self, media_buy_id: str):
+        # Call Agentforce Topic via REST API
+        response = await self.sf.restful(
+            "einstein/agent",
+            method="POST",
+            data={
+                "topic": "CEM_Order_Review",
+                "input": {"media_buy_id": media_buy_id}
+            }
+        )
+        return response
+```
+
+### Benefits of Agentforce
+
+| Benefit | Description |
+|---------|-------------|
+| **Unified Security** | Salesforce Identity, no external API keys |
+| **Data Access** | Native Data Cloud queries, no Snowflake credentials in Slack app |
+| **Audit Trail** | Einstein Analytics + Shield Event Monitoring |
+| **Governance** | Topic permissions, action restrictions |
+| **Scalability** | Hyperforce auto-scaling |
+| **Observability** | Built-in monitoring, Einstein Trust Layer |
+
+### Migration Path
+
+```mermaid
+flowchart LR
+    subgraph PHASE1 ["📍 PHASE 1: Current"]
+        P1_SLACK["Slack App"]
+        P1_CEM["cem_agent.py<br/>(Claude)"]
+        P1_SNOW["Snowflake<br/>(direct)"]
+        
+        P1_SLACK --> P1_CEM
+        P1_CEM --> P1_SNOW
+    end
+
+    subgraph PHASE2 ["🔄 PHASE 2: Hybrid"]
+        P2_SLACK["Slack App"]
+        P2_AF["Agentforce<br/>Topic"]
+        P2_DC["Data Cloud"]
+        P2_FALLBACK["cem_agent.py<br/>(fallback)"]
+        
+        P2_SLACK --> P2_AF
+        P2_AF --> P2_DC
+        P2_SLACK -.->|"if AF fails"| P2_FALLBACK
+    end
+
+    subgraph PHASE3 ["✅ PHASE 3: Full"]
+        P3_SLACK["Slack App"]
+        P3_AF["Agentforce<br/>Topic"]
+        P3_DC["Data Cloud"]
+        
+        P3_SLACK --> P3_AF
+        P3_AF --> P3_DC
+    end
+
+    PHASE1 -->|"Add Agentforce"| PHASE2
+    PHASE2 -->|"Remove Claude"| PHASE3
+
+    style PHASE1 fill:#FEE2E2,stroke:#EF4444
+    style PHASE2 fill:#FEF3C7,stroke:#F59E0B
+    style PHASE3 fill:#D1FAE5,stroke:#22C55E
+```
+
+### Environment Configuration
+
+```bash
+# Phase 2: Hybrid Mode
+AGENTFORCE_ENABLED=true
+AGENTFORCE_TOPIC_NAME=CEM_Order_Review
+AGENTFORCE_FALLBACK_ENABLED=true   # Use Claude if Agentforce fails
+
+# Salesforce Connection (for Agentforce)
+SFDC_USER_NAME=integration@yahoo.com
+SFDC_CONSUMER_KEY=3MVG9...
+SFDC_PRIVATE_KEY_FILE=./certs/salesforce.key
+SFDC_LOGIN_URL=https://login.salesforce.com
+
+# Phase 3: Remove these
+# ANTHROPIC_API_KEY=sk-ant-...  # No longer needed
+```
+
+---
+
 ## Learn More
 
 - [MCP Protocol](https://modelcontextprotocol.io)
 - [AdCP Specification](https://adcontextprotocol.org)
 - [Slack Bolt for Python](https://slack.dev/bolt-python)
 - [Salesforce Data Cloud](https://www.salesforce.com/data-cloud/)
+- [Salesforce Agentforce](https://www.salesforce.com/agentforce/)
 
