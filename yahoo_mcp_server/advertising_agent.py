@@ -13,11 +13,18 @@ import os
 import sys
 import asyncio
 import json
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from dotenv import load_dotenv
 
 # Import MCP client
 from fastmcp import Client
+
+# Import httpx for webhook calls
+try:
+    import httpx
+    HAS_HTTPX = True
+except ImportError:
+    HAS_HTTPX = False
 
 # Import Anthropic (Claude)
 try:
@@ -75,6 +82,53 @@ class AdvertisingAgent:
             print("🤖 Using GPT-4 (OpenAI)")
         else:
             raise ValueError("No AI client available. Install anthropic or openai.")
+        
+        # CEM Webhook URL (for notifying internal team of new campaigns)
+        self.cem_webhook_url = os.getenv("CEM_WEBHOOK_URL")
+        if self.cem_webhook_url:
+            print(f"📨 CEM Webhook: {self.cem_webhook_url[:50]}...")
+    
+    async def _notify_cem_webhook(self, campaign_data: Dict[str, Any]) -> bool:
+        """
+        Notify CEM team via webhook when a campaign is created.
+        
+        This triggers the internal Yahoo CEM approval workflow in Slack.
+        
+        Args:
+            campaign_data: Campaign details including media_buy_id
+            
+        Returns:
+            True if webhook succeeded, False otherwise
+        """
+        if not self.cem_webhook_url:
+            print("   ℹ️  CEM_WEBHOOK_URL not set, skipping CEM notification")
+            return False
+        
+        if not HAS_HTTPX:
+            print("   ⚠️  httpx not installed, skipping CEM notification")
+            return False
+        
+        try:
+            print(f"\n📨 Notifying CEM team...")
+            
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    self.cem_webhook_url,
+                    json=campaign_data,
+                    headers={"Content-Type": "application/json"}
+                )
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    print(f"   ✅ CEM notified: {result.get('recommendation', 'pending').upper()}")
+                    return True
+                else:
+                    print(f"   ⚠️  CEM webhook returned {response.status_code}: {response.text}")
+                    return False
+                    
+        except Exception as e:
+            print(f"   ⚠️  CEM webhook failed: {e}")
+            return False
     
     async def initialize(self):
         """Connect to MCP server and discover available tools"""
@@ -278,6 +332,34 @@ Be enthusiastic and supportive!"""
                             tool_result = str(result)
                         
                         print(f"✅ Tool result received")
+                        
+                        # ============================================================
+                        # CEM WEBHOOK: Notify internal team when campaign is created
+                        # ============================================================
+                        if tool_name == "create_media_buy" and "error" not in tool_result.lower():
+                            try:
+                                # Parse the result to extract campaign data
+                                result_data = json.loads(tool_result)
+                                
+                                # Build webhook payload
+                                webhook_payload = {
+                                    "media_buy_id": result_data.get("media_buy_id"),
+                                    "campaign_name": result_data.get("campaign_name"),
+                                    "total_budget": result_data.get("total_budget"),
+                                    "flight_start_date": result_data.get("flight_start_date"),
+                                    "flight_end_date": result_data.get("flight_end_date"),
+                                    "created_by": "streamlit_agent",
+                                    "source": "advertising_agent"
+                                }
+                                
+                                # Call webhook (async)
+                                await self._notify_cem_webhook(webhook_payload)
+                                
+                            except json.JSONDecodeError:
+                                print("   ℹ️  Could not parse result for CEM notification")
+                            except Exception as e:
+                                print(f"   ⚠️  CEM notification error: {e}")
+                        # ============================================================
                         
                         tool_results.append({
                             "type": "tool_result",
