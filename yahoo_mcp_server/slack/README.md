@@ -932,6 +932,15 @@ sequenceDiagram
 
 ### Multi-Channel Strategy
 
+Campaigns are routed to different Slack destinations based on business rules. The diagram below shows the four routing paths:
+
+| Route | Trigger | Destination | Use Case |
+|-------|---------|-------------|----------|
+| **Standard** | Default path | CEM's DM | Normal campaigns under threshold |
+| **High Value** | Budget > $250K | VP approval channel + CEM DM | Large deals requiring executive visibility |
+| **Urgent** | `urgent=true` flag | #cem-urgent channel | Time-sensitive campaigns, SLA breaches |
+| **Broadcast** | System alerts | #cem-all channel | Outages, policy changes, announcements |
+
 ```mermaid
 flowchart LR
     subgraph CAMPAIGNS ["📋 INCOMING CAMPAIGNS"]
@@ -963,6 +972,159 @@ flowchart LR
     style CAMPAIGNS fill:#22C55E,stroke:#16A34A,color:#fff
     style ROUTING fill:#F97316,stroke:#EA580C,color:#fff
     style SLACK fill:#4A154B,stroke:#611f69,color:#fff
+```
+
+### Channel Creation: Pre-Configured, Not Runtime
+
+**Why channels cannot be created at runtime:**
+
+1. **Webhook requires channel ID** — The Slack API needs a channel ID (`C0123456789`) to post messages. You can't post to a channel that doesn't exist.
+
+2. **Bot must be a member** — Even if you create a channel via API, the bot must be invited/added before it can post. This requires admin approval in most enterprise Slack workspaces.
+
+3. **Channel creation requires admin scope** — Creating channels via API requires `channels:manage` scope, which most security teams won't grant to a bot.
+
+4. **Audit and compliance** — Enterprise Slack requires all channels to be provisioned through IT/governance processes, not created ad-hoc by bots.
+
+**The correct approach:**
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│  CHANNEL PROVISIONING (Done ONCE by Slack Admin)                    │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│  1. Admin creates channels in Slack:                                │
+│     • #cem-sports-approvals     (VP visibility for Sports)         │
+│     • #cem-entertainment-approvals (VP visibility for Ent)         │
+│     • #cem-finance-approvals    (VP visibility for Finance)        │
+│     • #cem-urgent               (Cross-vertical escalations)       │
+│     • #cem-all                  (Broadcast announcements)          │
+│                                                                     │
+│  2. Admin invites bot to each channel:                              │
+│     /invite @adcp-slack-app                                         │
+│                                                                     │
+│  3. Admin records channel IDs:                                      │
+│     Copy from channel settings → "Copy link"                        │
+│     https://workspace.slack.com/archives/C0ABC123DEF                │
+│                                    └──────────┘                     │
+│                                     Channel ID                      │
+│                                                                     │
+│  4. Configure in environment or database:                           │
+│     CEM_SPORTS_VP_CHANNEL=C0ABC123DEF                               │
+│     CEM_ENT_VP_CHANNEL=C0DEF456GHI                                  │
+│     ...                                                             │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Best Practices for Channel Management
+
+#### 1. Channel Naming Convention
+
+Use a consistent prefix for all CEM-related channels:
+
+```
+#cem-{vertical}-{purpose}
+
+Examples:
+#cem-sports-approvals      → Sports vertical VP approvals
+#cem-sports-operations     → Sports team daily ops
+#cem-entertainment-approvals
+#cem-urgent                → Cross-vertical escalations
+#cem-all                   → Broadcast to all CEMs
+```
+
+#### 2. Channel-to-Vertical Mapping Table
+
+Store channel assignments in Snowflake for flexibility:
+
+```sql
+-- SNOWFLAKE: cem_channel_config
+CREATE TABLE cem_channel_config (
+    id              VARCHAR PRIMARY KEY,
+    vertical        VARCHAR NOT NULL,      -- 'sports', 'entertainment', 'finance'
+    channel_type    VARCHAR NOT NULL,      -- 'vp_approval', 'operations', 'urgent'
+    slack_channel_id VARCHAR NOT NULL,     -- 'C0ABC123DEF'
+    min_budget      NUMBER,                -- NULL = no minimum
+    max_budget      NUMBER,                -- NULL = no maximum
+    is_active       BOOLEAN DEFAULT TRUE,
+    created_at      TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP()
+);
+
+-- Example data
+INSERT INTO cem_channel_config VALUES
+('ch_001', 'sports',       'vp_approval', 'C0SPORTS_VP',  250000, NULL,   TRUE, CURRENT_TIMESTAMP()),
+('ch_002', 'sports',       'operations',  'C0SPORTS_OPS', NULL,   250000, TRUE, CURRENT_TIMESTAMP()),
+('ch_003', 'entertainment','vp_approval', 'C0ENT_VP',     250000, NULL,   TRUE, CURRENT_TIMESTAMP()),
+('ch_004', 'all',          'urgent',      'C0URGENT',     NULL,   NULL,   TRUE, CURRENT_TIMESTAMP()),
+('ch_005', 'all',          'broadcast',   'C0ALL',        NULL,   NULL,   TRUE, CURRENT_TIMESTAMP());
+```
+
+#### 3. Routing Logic (Pseudocode)
+
+```python
+async def get_destination_channel(campaign: dict) -> str:
+    """Determine where to post based on campaign attributes."""
+    
+    budget = campaign.get("total_budget", 0)
+    vertical = campaign.get("vertical", "unknown")
+    is_urgent = campaign.get("urgent", False)
+    
+    # Priority 1: Urgent always goes to urgent channel
+    if is_urgent:
+        return config["CEM_URGENT_CHANNEL"]
+    
+    # Priority 2: High-value goes to VP channel
+    if budget >= config["CEM_HIGH_VALUE_THRESHOLD"]:
+        # Lookup vertical-specific VP channel
+        channel = await lookup_channel(
+            vertical=vertical, 
+            channel_type="vp_approval"
+        )
+        return channel or config["CEM_DEFAULT_CHANNEL"]
+    
+    # Priority 3: Standard goes to CEM's DM
+    cem_slack_id = await lookup_cem_for_principal(campaign["principal_id"])
+    if cem_slack_id:
+        return cem_slack_id  # DM uses user ID, not channel ID
+    
+    # Fallback: Default channel
+    return config["CEM_DEFAULT_CHANNEL"]
+```
+
+#### 4. Channel Lifecycle Management
+
+| Phase | Action | Owner | Frequency |
+|-------|--------|-------|-----------|
+| **Provision** | Create channel, invite bot, record ID | Slack Admin | As needed |
+| **Configure** | Add channel ID to config/database | DevOps | Same time as provision |
+| **Audit** | Verify bot membership, check posting | Automated health check | Daily |
+| **Archive** | Archive unused channels, remove from config | Slack Admin | Quarterly |
+
+#### 5. Health Check for Channels
+
+The bot should verify channel access on startup:
+
+```python
+async def verify_channel_access():
+    """Run on startup to verify bot can post to all configured channels."""
+    
+    channels_to_check = [
+        os.getenv("CEM_DEFAULT_CHANNEL"),
+        os.getenv("CEM_HIGH_VALUE_CHANNEL"),
+        os.getenv("CEM_URGENT_CHANNEL"),
+    ]
+    
+    for channel_id in channels_to_check:
+        if not channel_id:
+            continue
+        try:
+            # Test with conversations.info (read-only, no spam)
+            result = await slack_client.conversations_info(channel=channel_id)
+            if not result["channel"]["is_member"]:
+                logger.warning(f"⚠️  Bot not member of {channel_id}")
+        except SlackApiError as e:
+            logger.error(f"❌ Cannot access {channel_id}: {e}")
 ```
 
 ### Scaling Configuration
