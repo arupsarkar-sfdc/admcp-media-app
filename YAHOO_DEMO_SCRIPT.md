@@ -1,230 +1,134 @@
-# Yahoo Demo Script - November 25, 2025
+# Yahoo Demo Script - December 2025
 
-**Purpose**: Structured demo flow showcasing Yahoo's vision alignment with implementation  
-**Duration**: 15-20 minutes  
-**Audience**: Yahoo stakeholders
+**Purpose**: Comprehensive demo showcasing AdCP + Slack CEM integration  
+**Duration**: 20-30 minutes  
+**Audience**: Yahoo stakeholders, agency partners
+
+---
+
+## Architecture Overview
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                        DEMO ARCHITECTURE                                  │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌─────────────┐     ┌─────────────┐     ┌─────────────┐                │
+│  │  AGENCY     │     │  YAHOO      │     │  YAHOO      │                │
+│  │  SIDE       │     │  AdCP       │     │  INTERNAL   │                │
+│  │             │     │  SERVER     │     │  (CEM)      │                │
+│  │ Streamlit   │ ──▶ │ MCP Server  │ ──▶ │ Slack Bot   │                │
+│  │ Campaign    │     │ (Heroku)    │     │ (Heroku)    │                │
+│  │ Planner     │     │             │     │             │                │
+│  └─────────────┘     └─────────────┘     └─────────────┘                │
+│        │                   │                   │                         │
+│        │                   ▼                   ▼                         │
+│        │             ┌─────────────┐     ┌─────────────┐                │
+│        │             │ Snowflake   │◀───▶│ Data Cloud  │                │
+│        │             │ (Write)     │     │ (Read)      │                │
+│        │             └─────────────┘     └─────────────┘                │
+│        │                                                                 │
+│        ▼                                                                 │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │  DEMO FLOW                                                       │    │
+│  │  1. Agency creates campaign (Streamlit)                          │    │
+│  │  2. AdCP validates and writes to Snowflake                       │    │
+│  │  3. Webhook notifies Slack CEM bot                               │    │
+│  │  4. CEM reviews, approves/rejects in Slack                       │    │
+│  │  5. Audit trail logged to Snowflake                              │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
+```
 
 ---
 
 ## 🎯 Demo Objectives
 
-1. ✅ Showcase **seamless data access** (natural language → instant results)
-2. ✅ Demonstrate **proposal data** (pricing, targeting, formats, forecasts)
-3. ✅ Highlight **matched audience integration** (Clean Room data)
-4. ✅ Present **performance reporting** (real-time metrics, KPIs)
-5. ✅ Illustrate **agentic experience** (conversational, intelligent)
+| Objective | How We Show It |
+|-----------|----------------|
+| **Seamless Data Access** | Natural language → instant results |
+| **AdCP Protocol Compliance** | MCP server with 9 AdCP tools |
+| **Human-in-the-Loop** | CEM approval workflow in Slack |
+| **AI-Powered Validation** | SQL checks + Claude summarization |
+| **Enterprise Scale** | 100 CEMs, visibility rules, channels |
+| **Audit Trail** | Every action logged to Snowflake |
 
 ---
 
 ## 📋 Pre-Demo Checklist
 
-### **Technical Setup** (Do this 30 minutes before demo)
+### **30 Minutes Before**
 
 ```bash
-# 1. Verify MCP server is running
+# 1. Verify MCP server
 curl https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com/.well-known/adagents.json
 
-# 2. Set API key
+# 2. Verify Slack bot (check Heroku logs)
+heroku logs --tail -a adcp-slack-app
+
+# 3. Set environment
+cd /Users/arup.sarkar/Projects/Salesforce/admcp-media-app/yahoo_mcp_server
 export ANTHROPIC_API_KEY=your_key
 
-# 3. Test agent connection
-cd /Users/arup.sarkar/Projects/Salesforce/admcp-media-app/yahoo_mcp_server
-uv run python advertising_agent.py
-# Type: "test" or "hello" to verify connection
+# 4. Test Streamlit locally
+uv run python -m streamlit run streamlit_app.py
 
-# 4. Have backup: Test with HTTP client
-uv run python nike_campaign_workflow_http_client.py
+# 5. Scale Heroku for Slack (if testing against Heroku)
+heroku ps:scale web=1 -a adcp-slack-app
 ```
 
-### **Data Verification**
+### **Verify Demo Data**
 
-```bash
-# Verify campaigns exist for performance demo
-# Check Snowflake or use get_media_buy_delivery tool
-```
-
-### **Backup Plan**
-
-- If agent fails: Use HTTP client (`nike_campaign_workflow_http_client.py`)
-- If MCP server down: Show static screenshots + explain architecture
-- If API key issues: Use pre-recorded video
+| Check | Command |
+|-------|---------|
+| Products exist | `SELECT * FROM products WHERE is_active = true` |
+| Principals exist | `SELECT * FROM principals` |
+| Audit log empty | `DELETE FROM cem_audit_log WHERE created_at < NOW()` |
 
 ---
 
-## 🎬 Demo Flow (15-20 minutes)
+## 🎬 Demo Flow
 
 ### **Part 1: Introduction (2 minutes)**
 
 **What to Say:**
-> "Today I'll demonstrate how we've implemented Yahoo's vision for agency workflows. You'll see natural language conversations that power the entire campaign lifecycle - from planning to optimization to wrap-up."
+> "Today I'll demonstrate the complete advertising workflow — from agency campaign creation to Yahoo CEM approval. You'll see two interfaces working together: a Streamlit app for agencies and a Slack bot for internal approval workflows."
 
 **Key Points:**
-- Natural language interface (no API knowledge needed)
-- MCP protocol enables AI-native access
-- Real-time data via Data Cloud Zero Copy
+- AdCP protocol for standardized campaign management
+- Slack integration for human-in-the-loop
+- AI summarization for faster decisions
+- Full audit trail in Snowflake
 
 ---
 
-### **Part 2: Planning & Discovery (4 minutes)**
+### **Part 2: Product Discovery (3 minutes)**
 
-**Demo Prompt 1: Product Discovery**
+**Demo in Streamlit:**
 ```
-Show me advertising options for Nike running shoes. I want to target sports enthusiasts aged 25-45 in the US with a budget of $50,000 for Q1 2025.
+Show me advertising options for Nike running shoes with a budget of $50,000
 ```
 
 **What to Highlight:**
-- ✅ **Seamless Access**: Natural language → instant product recommendations
-- ✅ **Proposal Data**: Pricing (with enterprise discounts), targeting, formats, reach forecasts
-- ✅ **Matched Audience**: Show audience overlap data (850K users, demographics)
-- ✅ **LLM Intelligence**: Agent understands intent and filters appropriately
-
-**Expected Agent Flow:**
-1. Calls `get_products()` with extracted criteria
-2. Returns 3-5 products with full proposal data
-3. Shows matched audience demographics
-4. Explains pricing and reach estimates
-
-**What to Say:**
-> "Notice how the agent understands the campaign brief, discovers relevant inventory, and presents complete proposal data - pricing, targeting, formats, and audience overlap - all from a simple natural language request. This is the seamless access Yahoo envisioned."
+- Natural language understanding
+- Product recommendations with pricing
+- Enterprise discounts applied
+- Audience overlap data
 
 ---
 
-### **Part 3: Buying & Campaign Creation (5 minutes)**
+### **Part 3: Campaign Creation → CEM Workflow (10 minutes)**
 
-**Demo Prompt 2: Campaign Creation**
-```
-I want to create a campaign for Nike Air Max shoes. Budget is $50,000, targeting US sports enthusiasts aged 25-45. Call it "Nike Air Max Spring 2025" and run it from January 1 to March 31, 2025. Use Yahoo Sports - Display product with leaderboard and medium rectangle formats.
-```
-
-**What to Highlight:**
-- ✅ **Package-Based Structure**: AdCP v2.3.0 compliant
-- ✅ **Creative Format Specifications**: Agent validates formats before creation
-- ✅ **Automated Workflow**: Multi-step process handled automatically
-- ✅ **Confirmation**: Agent confirms details before creating
-
-**Expected Agent Flow:**
-1. Calls `list_creative_formats()` to validate formats
-2. Confirms all details
-3. Calls `create_media_buy()` with full package structure
-4. Returns campaign ID and success confirmation
-
-**What to Say:**
-> "The agent handles the entire campaign creation workflow - validating formats, confirming details, and creating the campaign in seconds. This demonstrates the proposal data vision: complete targeting, inventory, pricing, and creative specs all integrated."
-
-**Alternative (if first prompt too complex):**
-```
-Turn 1: "I need help creating a Nike campaign"
-Turn 2: "My budget is $50,000 and I want to target sports fans"
-Turn 3: "Let's use Yahoo Sports - Display"
-Turn 4: "Use the leaderboard and rectangle formats"
-Turn 5: "Call it Nike Air Max Spring 2025, run it Q1 2025"
-Turn 6: "Yes, create it"
-```
-
-**What to Say:**
-> "Notice how the agent maintains context across multiple turns, asks clarifying questions, and only creates the campaign after confirmation. This is the agentic experience - intelligent, conversational, and safe."
+This is the core demo. We show the complete flow from agency to CEM approval.
 
 ---
 
-### **Part 4: Optimization & Performance (4 minutes)**
+## ✅ HAPPY PATH DEMOS
 
-**Demo Prompt 3: Performance Check**
-```
-How is my Nike Air Max Spring 2025 campaign performing? Show me impressions, clicks, conversions, and pacing.
-```
+### **Happy Path 1: Standard Campaign**
 
-**What to Highlight:**
-- ✅ **Real-Time Metrics**: Instant access via Data Cloud Zero Copy
-- ✅ **Performance Summary**: Budget/spend, KPIs (CTR, CVR, CPM, CPC, CPA)
-- ✅ **Pacing Analysis**: Budget pacing vs. time pacing
-- ✅ **Channel Breakdown**: Device/format performance
-
-**Expected Agent Flow:**
-1. Calls `get_media_buy_delivery()` with campaign ID
-2. Presents metrics in readable format
-3. Analyzes pacing (ahead/behind/on track)
-4. Suggests optimizations if needed
-
-**What to Say:**
-> "Here we see real-time performance data - impressions, clicks, conversions, and pacing - all accessible instantly through natural language. This is the measurement and analytics vision: comprehensive performance tracking with actionable insights."
-
-**Demo Prompt 4: Campaign Optimization**
-```
-The performance looks good. Can we increase the budget from $50,000 to $75,000 to capitalize on this performance?
-```
-
-**What to Highlight:**
-- ✅ **Continuous Action**: Budget updates in real-time
-- ✅ **Agent Intelligence**: Projects expected results with new budget
-- ✅ **Safe Updates**: Confirms before making changes
-
-**Expected Agent Flow:**
-1. Confirms budget increase
-2. Calls `update_media_buy()` with new budget
-3. Projects expected results
-4. Explains impact
-
-**What to Say:**
-> "The agent enables continuous optimization - budget adjustments, status changes, all through conversation. While we haven't implemented full automated recommendations yet, the foundation is here for dynamic budget reallocation across channels and creatives."
-
----
-
-### **Part 5: Wrap-Up & Reporting (3 minutes)**
-
-**Demo Prompt 5: Comprehensive Report**
-```
-Generate a 7-day performance report for campaign nike_air_max_spring_2025_20251120_101430. Include delivery metrics, top-performing formats, and recommendations.
-```
-
-**What to Highlight:**
-- ✅ **Performance Summary**: Complete budget/spend overview, KPIs, channel breakdown
-- ✅ **Daily Trends**: Day-by-day performance
-- ✅ **Device Breakdown**: Performance by device type
-- ✅ **Actionable Insights**: Recommendations based on data
-
-**Expected Agent Flow:**
-1. Calls `get_media_buy_report()` with 7-day timeframe
-2. Presents report sections clearly
-3. Provides recommendations
-4. Offers next steps
-
-**What to Say:**
-> "This comprehensive report demonstrates the wrap-up vision: complete performance summaries with business outcomes, KPIs, and channel breakdowns. The agent can generate these reports instantly, replacing hours of manual work."
-
----
-
-### **Part 6: Vision Alignment Summary (2 minutes)**
-
-**What to Say:**
-> "Let me summarize how this implementation aligns with Yahoo's vision:"
-
-**Show Vision Mapping Table** (from `YAHOO_VISION_MAPPING.md`):
-
-| Yahoo Vision | Status | Demo Shown |
-|-------------|--------|------------|
-| **Seamless Data Access** | ✅ | Natural language → instant results |
-| **Proposal Data** | ✅ | Pricing, targeting, formats, forecasts |
-| **Matched Audience** | ✅ | Clean Room audience overlap data |
-| **Performance Summary** | ✅ | Complete KPIs, budget/spend, breakdowns |
-| **Measurement & Analytics** | ⚠️ | Real-time metrics (BYOD/attribution coming) |
-| **Continuous Optimization** | ⚠️ | Budget updates (automation coming) |
-
-**What to Say:**
-> "We've implemented 6 out of 10 vision items fully, with 4 partially implemented. The foundation is solid - seamless access, proposal data, matched audiences, and performance reporting all work today. The remaining features - automated recommendations, BYOD conversion data, and competitive insights - have clear technical paths forward."
-
----
-
-## 🤖 Part 7: CEM Automation Workflow (5 minutes)
-
-This section demonstrates Yahoo's **internal Campaign Escalation Manager (CEM) workflow** — the human-in-the-loop approval process that happens after AdCP creates a campaign.
-
-> **Note:** This demo uses the **Slack App** (`adcp-slack-app`), not the Streamlit/CLI agent.
-
----
-
-### **🟢 Happy Path: Validation Passes → CEM Approves**
-
-**Demo Prompt (in Slack):**
+**Prompt (Streamlit or Slack):**
 ```
 Create a Nike Spring Running Q1 2026 campaign with:
 - Product: yahoo_sports_display_enthusiasts
@@ -233,150 +137,303 @@ Create a Nike Spring Running Q1 2026 campaign with:
 - Pacing: even
 ```
 
-**What Happens:**
+**Expected Flow:**
 
-| Step | Action | Visual |
-|------|--------|--------|
-| 1️⃣ | Campaign created in Snowflake | ✅ Success message in Slack |
-| 2️⃣ | CEM workflow triggered | 🔄 "Order submitted for CEM review" |
-| 3️⃣ | SQL validation runs | ✅ All 6 checks pass |
-| 4️⃣ | AI generates summary | 🤖 Claude analyzes order |
-| 5️⃣ | Approval card posted | 📋 Card with buttons appears |
-| 6️⃣ | CEM clicks **Approve** | ✅ Status → `active` |
-| 7️⃣ | Audit logged | 📝 `cem_approved` in Snowflake |
+| Step | What Happens | Where |
+|------|--------------|-------|
+| 1 | Campaign created | Snowflake |
+| 2 | Webhook fired | Streamlit → Slack |
+| 3 | Validation runs | 6 SQL checks pass |
+| 4 | AI summarizes | Claude generates card |
+| 5 | CEM sees approval card | Slack |
+| 6 | CEM clicks Approve | Slack |
+| 7 | Status → `active` | Snowflake |
+| 8 | Audit logged | `cem_approved` |
 
 **Expected Slack Card:**
 ```
-🔔 New Order Pending CEM Approval
-Order ID: nike_spring_running_q1_2026_xxxxx
-
-📋 Order Summary
-Nike (enterprise client) requesting $50,000 campaign...
-
-✅ Validation Results
-All 6 checks passed: product exists, budget within limits...
-
-🤖 AI Recommendation
-✅ APPROVE (Confidence: high)
-🟢 Risk Level: low
-
-[✅ Approve] [❌ Reject] [📝 Request Changes]
+┌──────────────────────────────────────────────────────────────┐
+│ 📋 CEM REVIEW REQUIRED                                       │
+├──────────────────────────────────────────────────────────────┤
+│ Campaign: Nike Spring Running Q1 2026                        │
+│ Budget: $50,000.00                                           │
+│ Client: Nike Global                                          │
+│ Flight: Jan 15, 2026 → Mar 15, 2026                          │
+├──────────────────────────────────────────────────────────────┤
+│ ✅ ALL VALIDATIONS PASSED (6/6)                              │
+│                                                              │
+│ 🤖 AI Recommendation: APPROVE                                │
+│ Confidence: HIGH                                             │
+│ Risk Level: LOW                                              │
+│                                                              │
+│ [✅ Approve] [❌ Reject] [📝 Request Changes]                │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 **What to Say:**
-> "Notice how the system automatically validates the order against master tables — products, formats, budget limits, principal authorization. The AI then summarizes everything for the CEM in plain English, with a clear recommendation. The CEM can approve with one click, and the audit trail is automatically logged to Snowflake."
+> "Notice how the system automatically validates against our product catalog, budget limits, and principal authorization. The AI summarizes everything in plain English. One click to approve, and the audit trail is complete."
 
 ---
 
-### **🔴 Sad Path: Validation Fails → CEM Rejects**
+### **Happy Path 2: Sports Video Pre-roll**
 
-**Demo Prompt (in Slack):**
 ```
-Create a Nike Summer Video campaign with:
-- Product: yahoo_metaverse_ads
+Create a Nike Marathon Training campaign with:
+- Product: yahoo_sports_video_preroll
+- Budget: $125,000
+- Flight dates: February 1, 2026 to April 30, 2026
+- Pacing: front_loaded
+```
+
+**Why it passes:** Valid product, reasonable budget, future dates
+
+---
+
+### **Happy Path 3: Finance Premium Display**
+
+```
+Create a Nike Investor Relations Q2 campaign with:
+- Product: yahoo_finance_display_premium
+- Budget: $75,000
+- Flight dates: April 1, 2026 to June 30, 2026
+- Pacing: even
+```
+
+**Why it passes:** Different product vertical, still valid
+
+---
+
+### **Happy Path 4: CTV Video (High Budget)**
+
+```
+Create a Nike Olympics Summer 2026 campaign with:
+- Product: yahoo_finance_ctv_video
+- Budget: $500,000
+- Flight dates: July 1, 2026 to August 15, 2026
+- Pacing: back_loaded
+```
+
+**Why it passes:** High budget but within limits, valid product
+
+---
+
+### **Happy Path 5: Native Content**
+
+```
+Create a Nike Lifestyle Stories campaign with:
+- Product: yahoo_sports_native
+- Budget: $35,000
+- Flight dates: March 1, 2026 to May 31, 2026
+- Pacing: even
+```
+
+---
+
+### **Happy Path 6: Natural Language (Unstructured)**
+
+```
+I need a $200K Nike Back to School campaign running August through September 2026 on Yahoo Sports Video
+```
+
+**What to Say:**
+> "The AI understands natural language — no structured format required. It extracts product, budget, dates, and creates the campaign."
+
+---
+
+## ❌ SAD PATH DEMOS
+
+### **Sad Path 1: Invalid Product (Meta Ads)**
+
+```
+Create a Nike Summer Running Q2 2026 campaign with:
+- Product: yahoo_meta_ads_sports_display
 - Budget: $50,000
-- Flight dates: January 15, 2026 to March 15, 2026
+- Flight dates: March 15, 2026 to June 14, 2026
+- Pacing: even
 ```
 
-**What Happens:**
-
-| Step | Action | Visual |
-|------|--------|--------|
-| 1️⃣ | Campaign created in Snowflake | ✅ Record created |
-| 2️⃣ | CEM workflow triggered | 🔄 "Order submitted for CEM review" |
-| 3️⃣ | SQL validation runs | ❌ `products_exist` fails |
-| 4️⃣ | AI generates summary | 🤖 Claude identifies issue |
-| 5️⃣ | Approval card posted | 📋 Card with REJECT recommendation |
-| 6️⃣ | CEM clicks **Reject** | Modal opens for reason |
-| 7️⃣ | CEM enters reason | "Product does not exist" |
-| 8️⃣ | Rejection logged | 📝 `cem_rejected` in Snowflake |
+**Why it fails:** `yahoo_meta_ads_sports_display` doesn't exist
 
 **Expected Slack Card:**
 ```
-🔔 New Order Pending CEM Approval
-Order ID: nike_summer_video_xxxxx
-
-📋 Order Summary
-Nike requesting $50,000 campaign with invalid product...
-
-❌ Validation Results
-5/6 checks passed. FAILED: Product 'yahoo_metaverse_ads' 
-does not exist in catalog.
-
-⚠️ Risk Flags
-• CRITICAL: Invalid product - does not exist in catalog
-• Zero estimated impressions despite budget allocation
-
-🤖 AI Recommendation
-❌ REJECT (Confidence: high)
-🔴 Risk Level: high
-
-The order must be rejected because the specified product 
-does not exist in Yahoo's product catalog...
-
-[✅ Approve] [❌ Reject] [📝 Request Changes]
+┌──────────────────────────────────────────────────────────────┐
+│ ⚠️ CEM REVIEW REQUIRED - VALIDATION ISSUES                   │
+├──────────────────────────────────────────────────────────────┤
+│ Campaign: Nike Summer Running Q2 2026                        │
+│ Budget: $50,000.00                                           │
+├──────────────────────────────────────────────────────────────┤
+│ ❌ VALIDATION FAILED: products_exist                         │
+│                                                              │
+│ Invalid products: yahoo_meta_ads_sports_display              │
+│                                                              │
+│ 🤖 AI Recommendation: REJECT                                 │
+│ Reason: Product not in Yahoo inventory                       │
+│ Risk Level: HIGH                                             │
+│                                                              │
+│ [✅ Approve] [❌ Reject] [📝 Request Changes]                │
+└──────────────────────────────────────────────────────────────┘
 ```
 
 **What to Say:**
-> "Here we see the system catching an error — the product doesn't exist in our catalog. The AI clearly explains why this should be rejected, and the CEM can reject with a documented reason. This ensures no invalid orders slip through, and every decision is audited."
+> "The system catches the error — this product doesn't exist in our catalog. The CEM sees exactly why it failed and can reject with one click."
 
 ---
 
-### **🟡 Review Path: Passes Validation but Needs Scrutiny**
+### **Sad Path 2: Invalid Product (TikTok)**
 
-**Demo Prompt (in Slack):**
 ```
-Create an Acme Partners Q1 Blitz campaign with:
+Create a Nike Gen Z campaign with:
+- Product: yahoo_tiktok_video
+- Budget: $100,000
+- Flight dates: May 1, 2026 to July 31, 2026
+- Pacing: even
+```
+
+**Why it fails:** Yahoo doesn't sell TikTok inventory
+
+---
+
+### **Sad Path 3: Invalid Product (Competitor)**
+
+```
+Create a Nike Holiday campaign with:
+- Product: google_youtube_masthead
+- Budget: $250,000
+- Flight dates: November 15, 2026 to December 31, 2026
+- Pacing: back_loaded
+```
+
+**Why it fails:** This is a Google product, not Yahoo
+
+---
+
+### **Sad Path 4: Budget Too Low**
+
+```
+Create a Nike Test campaign with:
 - Product: yahoo_sports_display_enthusiasts
-- Budget: $750,000
-- Flight dates: January 2, 2026 to January 5, 2026
+- Budget: $500
+- Flight dates: January 1, 2026 to January 31, 2026
+- Pacing: even
 ```
 
-**What Happens:**
-- All validations pass ✅
-- AI flags risk: **High budget ($750K) for very short flight (3 days)**
-- Recommendation: **REVIEW** (not approve or reject)
-- CEM clicks **Request Changes** and provides feedback
+**Why it fails:** Below $10,000 minimum
+
+---
+
+### **Sad Path 5: Budget Too High**
+
+```
+Create a Nike Global Domination campaign with:
+- Product: yahoo_sports_video_preroll
+- Budget: $50,000,000
+- Flight dates: January 1, 2026 to December 31, 2026
+- Pacing: even
+```
+
+**Why it fails:** Exceeds $10M maximum
+
+---
+
+### **Sad Path 6: Unauthorized Principal**
+
+```
+Create a Puma Running campaign with:
+- Product: yahoo_sports_display_enthusiasts
+- Budget: $75,000
+- Flight dates: April 1, 2026 to June 30, 2026
+- Pacing: even
+```
+
+**Why it fails:** Puma not in authorized principals list
+
+---
+
+### **Sad Path 7: Flight Dates in Past**
+
+```
+Create a Nike Retro campaign with:
+- Product: yahoo_sports_native
+- Budget: $50,000
+- Flight dates: January 1, 2020 to March 31, 2020
+- Pacing: even
+```
+
+**Why it fails:** Dates are in the past
+
+---
+
+### **Sad Path 8: End Date Before Start**
+
+```
+Create a Nike Confused campaign with:
+- Product: yahoo_sports_display_enthusiasts
+- Budget: $50,000
+- Flight dates: December 31, 2026 to January 1, 2026
+- Pacing: even
+```
+
+**Why it fails:** End date before start date
+
+---
+
+### **Sad Path 9: Multiple Failures**
+
+```
+Create a Nike Disaster campaign with:
+- Product: yahoo_instagram_stories
+- Budget: $999
+- Flight dates: June 1, 2026 to June 30, 2026
+- Pacing: even
+```
+
+**Why it fails:** Invalid product AND budget too low
+
+---
+
+## 🔍 REVIEW PATH DEMOS
+
+### **Review 1: High Budget Needs Scrutiny**
+
+```
+Create a Nike Superbowl 2026 campaign with:
+- Product: yahoo_sports_video_preroll
+- Budget: $2,500,000
+- Flight dates: February 1, 2026 to February 15, 2026
+- Pacing: front_loaded
+```
+
+**Why it triggers REVIEW:**
+- Very high budget ($2.5M)
+- Very short flight (2 weeks)
+- High daily spend rate (~$179K/day)
+
+**AI Recommendation:** REVIEW (not approve or reject)
 
 **What to Say:**
-> "This is where AI really shines. The order passes all technical validations, but the AI recognizes something unusual — $750K budget for just 3 days. Instead of auto-approving, it recommends human review. The CEM can request changes with specific feedback, creating a collaborative workflow."
+> "This passes all technical validations, but the AI flags unusual patterns — $2.5M for just 2 weeks. It recommends human review rather than auto-approving."
 
 ---
 
-### **CEM Workflow Architecture**
+### **Review 2: Aggressive Pacing**
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  AdCP PROTOCOL (create_media_buy)                               │
-│  ─────────────────────────────────────────────────────────────  │
-│  Campaign created in Snowflake → Success                        │
-└───────────────────────────┬─────────────────────────────────────┘
-                            │
-                            ▼ HANDOFF
-┌─────────────────────────────────────────────────────────────────┐
-│  YAHOO INTERNAL CEM WORKFLOW                                    │
-│  ─────────────────────────────────────────────────────────────  │
-│                                                                 │
-│  ┌─────────────┐   ┌─────────────┐   ┌─────────────┐           │
-│  │ SQL         │ → │ AI          │ → │ Slack       │           │
-│  │ Validation  │   │ Summary     │   │ Card        │           │
-│  └─────────────┘   └─────────────┘   └──────┬──────┘           │
-│                                             │                   │
-│                    ┌────────────────────────┼────────────────┐  │
-│                    │                        │                │  │
-│                    ▼                        ▼                ▼  │
-│             [✅ Approve]            [❌ Reject]      [📝 Review] │
-│                    │                        │                │  │
-│                    ▼                        ▼                ▼  │
-│            status=active           status=rejected   status=    │
-│            audit_log ✅            audit_log ✅     pending     │
-│                                                                 │
-└─────────────────────────────────────────────────────────────────┘
+Create a Nike Flash Sale campaign with:
+- Product: yahoo_sports_display_enthusiasts
+- Budget: $500,000
+- Flight dates: January 15, 2026 to January 22, 2026
+- Pacing: front_loaded
 ```
+
+**Why it triggers REVIEW:**
+- 7-day flight with $500K = $71K/day spend
+- Front-loaded pacing = even more aggressive start
 
 ---
 
-### **Valid Product IDs for Demo**
+## 📊 Reference Tables
+
+### **Valid Products**
 
 | Product ID | Type | Min Budget |
 |------------|------|------------|
@@ -386,111 +443,90 @@ Create an Acme Partners Q1 Blitz campaign with:
 | `yahoo_finance_display_premium` | Display | $10,000 |
 | `yahoo_finance_ctv_video` | CTV | $25,000 |
 
----
+### **Valid Formats**
 
-## 🎯 Key Talking Points
+| Format ID | Type |
+|-----------|------|
+| `display_300x250` | Display |
+| `display_728x90` | Display |
+| `display_160x600` | Display |
+| `display_320x50` | Mobile |
+| `video_16x9_15s` | Video 15s |
+| `video_16x9_30s` | Video 30s |
+| `video_9x16_15s` | Vertical |
+| `native_content_feed` | Native |
+| `native_in_stream` | Native |
 
-### **1. Seamless Access**
-- "Natural language eliminates the need for API knowledge"
-- "MCP protocol enables any AI to access Yahoo data"
-- "Data Cloud Zero Copy provides instant, real-time access"
+### **Valid Principals**
 
-### **2. Proposal Data**
-- "Complete proposals with pricing, targeting, formats, and forecasts"
-- "Enterprise discounts automatically applied"
-- "AdCP v2.3.0 compliant package structure"
+| Principal ID | Name |
+|--------------|------|
+| `nike_global` | Nike Global |
+| `nike_na` | Nike North America |
 
-### **3. Matched Audience**
-- "Clean Room audience overlap integrated into every product"
-- "Demographics, engagement scores, privacy-preserving"
-- "850K matched users example shown in discovery"
+### **Budget Limits**
 
-### **4. Performance Reporting**
-- "Real-time metrics via Data Cloud"
-- "Complete KPIs: CTR, CVR, CPM, CPC, CPA"
-- "Pacing analysis and device breakdowns"
-
-### **5. Agentic Experience**
-- "Conversational, intelligent, context-aware"
-- "Multi-step workflows handled automatically"
-- "Confirms before making changes"
-
----
-
-## 🚨 Troubleshooting During Demo
-
-### **If Agent Doesn't Respond:**
-1. Check terminal for error messages
-2. Verify MCP server is accessible: `curl https://yahoo-mcp-server-7c73bfc49f96.herokuapp.com/.well-known/adagents.json`
-3. Try simpler prompt: "Show me advertising options for Nike"
-
-### **If Tool Call Fails:**
-1. Check Heroku logs: `heroku logs --tail -a yahoo-mcp-server`
-2. Use backup: Show HTTP client example
-3. Explain: "This is a demo environment, production would have better error handling"
-
-### **If Format Validation Fails:**
-1. Agent should call `list_creative_formats()` first
-2. If it doesn't, manually show format list
-3. Explain: "Agent learns from errors and improves"
-
-### **If Campaign Creation Fails:**
-1. Check if campaign ID already exists
-2. Try different campaign name
-3. Show the error handling: "Agent explains what went wrong"
+| Limit | Value |
+|-------|-------|
+| Minimum | $10,000 |
+| Maximum | $10,000,000 |
 
 ---
 
-## 📝 Backup Prompts (If Primary Ones Fail)
+## 🎯 Quick Demo Commands
 
-### **Simple Discovery:**
+### **For Video Recording (Copy-Paste Ready)**
+
 ```
-Show me advertising options for Nike
+# Happy Path - Quick
+Create a Nike Spring Running campaign with yahoo_sports_display_enthusiasts, $50K budget, Jan-Mar 2026
+
+# Sad Path - Bad Product
+Create a Nike Summer campaign with yahoo_tiktok_video, $100K budget, Jun-Aug 2026
+
+# Sad Path - Unauthorized Client
+Create a Puma Fall campaign with yahoo_sports_display_enthusiasts, $75K budget, Sep-Nov 2026
+
+# Review Path - High Risk
+Create a Nike Superbowl campaign with yahoo_sports_video_preroll, $2.5M budget, Feb 1-15 2026
 ```
 
-### **Simple Campaign:**
-```
-Create a $25,000 campaign for Nike running shoes using Yahoo Sports
-```
+---
 
-### **Simple Performance:**
-```
-Show me campaign performance
-```
+## 🚨 Troubleshooting
+
+| Issue | Solution |
+|-------|----------|
+| Slack not responding | Check `heroku logs --tail -a adcp-slack-app` |
+| MCP server down | Check `heroku ps -a yahoo-mcp-server` |
+| Validation always passes | Verify Snowflake connection in validators.py |
+| Webhook not firing | Check `CEM_WEBHOOK_URL` in Streamlit env |
+| Duplicate campaigns | Campaign IDs are timestamped, shouldn't conflict |
 
 ---
 
 ## 🎬 Closing Statement
 
 **What to Say:**
-> "This demonstration shows how we've brought Yahoo's vision to life. The agentic experience makes advertising campaign management conversational and intelligent. The foundation is production-ready, and we have clear technical paths for the remaining features. 
-
-> The key differentiator is the seamless access - natural language conversations that eliminate the complexity of traditional APIs. This is what makes Yahoo data accessible to more advertisers, exactly as envisioned.
-
-> Questions?"
-
----
-
-## 📊 Success Metrics
-
-**Demo is successful if:**
-- ✅ Agent responds to all prompts within 5 seconds
-- ✅ Campaign creation completes successfully
-- ✅ Performance data displays correctly
-- ✅ Yahoo stakeholders understand the vision alignment
-- ✅ Clear path forward for remaining features
+> "You've seen the complete workflow — from agency campaign creation through CEM approval. The key innovations are:
+> 
+> 1. **AdCP Protocol** - Standardized, open protocol for advertising
+> 2. **AI Validation** - SQL checks + Claude summarization
+> 3. **Human-in-the-Loop** - CEM approval in Slack
+> 4. **Full Audit Trail** - Every action logged to Snowflake
+> 
+> This is what agentic advertising looks like — intelligent, conversational, and compliant."
 
 ---
 
-## 🔄 Post-Demo Follow-Up
+## 📝 Post-Demo Follow-Up
 
-**Send after demo:**
-1. `YAHOO_VISION_MAPPING.md` - Complete vision alignment
-2. `TECHNOLOGY_BUSINESS_VISION.md` - Technical architecture
-3. `AGENTIC_EXPERIENCE_GUIDE.md` - Full prompt library
+**Send to stakeholders:**
+1. `YAHOO_VISION_MAPPING.md` — Vision alignment
+2. `yahoo_mcp_server/slack/README.md` — Slack architecture
+3. `yahoo_mcp_server/automation/README.md` — CEM workflow details
 4. Demo recording (if recorded)
 
 ---
 
 **Good luck with your demo! 🚀**
-
