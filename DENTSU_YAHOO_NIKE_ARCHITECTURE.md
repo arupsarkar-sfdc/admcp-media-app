@@ -210,48 +210,77 @@ Both options use **Yahoo's D360 (Data Cloud) Clean Room** as the collaboration e
 
 ---
 
-### 🏠 Option 1: Direct Advertiser Collaboration (Nike → Yahoo D360)
+### 🏠 Option 1: Direct Advertiser Collaboration (Advertiser → Yahoo D360)
 
-**Use Case**: Single advertiser working directly with Yahoo
+**Use Case**: Small/mid-size advertisers OR large advertisers with in-house media teams who want **self-service** access to Yahoo inventory without agency involvement.
 
-In this model, **Nike directly collaborates** with Yahoo's D360 Clean Room. Nike contributes their first-party customer segments, and Yahoo provides audience data for matching.
+In this model, the **advertiser directly collaborates** with Yahoo's D360 Clean Room. The advertiser contributes their first-party customer segments, and Yahoo provides audience data for matching. **Dentsu is optional** - they may provide campaign optimization services but are not required for the Clean Room collaboration.
 
 ```mermaid
 flowchart TB
-    subgraph NIKE["🏃 NIKE (Advertiser)"]
-        NikeDC["☁️ Nike D360<br/>First-Party Customer Data"]
+    subgraph ADVERTISER["🏃 ADVERTISER (e.g., Small Brand)"]
+        AdvDC["☁️ Advertiser D360<br/>First-Party Customer Data"]
+    end
+
+    subgraph DENTSU["🏢 DENTSU (OPTIONAL)"]
+        DentsuDC["☁️ Dentsu D360<br/>Campaign Optimization"]
+        DentsuAgent["🤖 Dentsu Agent"]
     end
 
     subgraph YAHOO["📺 YAHOO (Publisher) - CLEAN ROOM HOST"]
         YahooDC["☁️ Yahoo D360"]
         
         subgraph CLEANROOM["🔐 YAHOO D360 CLEAN ROOM"]
-            CR1["Nike Segments<br/>(Contributed by Nike)"]
+            CR1["Advertiser Segments<br/>(Direct Contribution)"]
             CR2["Yahoo Audiences<br/>(Native to Yahoo)"]
             CR3["🔀 Match Engine"]
             CR4["📤 Matched Audiences"]
         end
         
         YahooSnowflake["❄️ Snowflake"]
+        YahooMCP["🔌 Yahoo MCP Server"]
     end
 
-    NikeDC -->|"Hashed IDs + Segments<br/>(Direct Contribution)"| CR1
+    AdvDC -->|"Hashed IDs + Segments<br/>(Direct Contribution)"| CR1
     YahooDC --> CR2
     CR1 --> CR3
     CR2 --> CR3
     CR3 --> CR4
-    CR4 -->|"Matched Results<br/>(No PII)"| NikeDC
+    CR4 -->|"Matched Results<br/>(No PII)"| AdvDC
     CR4 --> YahooSnowflake
+    
+    %% Dentsu is OPTIONAL - dotted lines
+    CR4 -.->|"Optional: Results Copy<br/>for Optimization"| DentsuDC
+    DentsuDC -.->|"Optional: Campaign<br/>Recommendations"| AdvDC
+    DentsuAgent -.->|"Optional: A2A<br/>Orchestration"| YahooMCP
 ```
+
+**Is Dentsu Required?** ❌ **NO** - Dentsu is optional in this model.
+
+**When Advertiser Goes Direct (No Dentsu):**
+- Small/mid-size advertisers without agency relationships
+- Large advertisers with in-house media buying teams
+- Advertisers who prefer self-service campaign management
+- Advertisers whose data is NOT in Dentsu's D360
+
+**When Dentsu is Involved (Optional - Dotted Line):**
+| Dentsu D360 Value-Add | Description |
+|----------------------|-------------|
+| **Campaign Optimization** | AI-powered budget allocation and pacing |
+| **Cross-Campaign Insights** | Learnings from other advertiser campaigns |
+| **Reporting & Analytics** | Unified dashboards across publishers |
+| **A2A Orchestration** | Agent-to-agent automation with Yahoo |
+| **Creative Strategy** | Format recommendations based on performance |
 
 **Characteristics:**
 | Aspect | Description |
 |--------|-------------|
-| **Collaboration** | Nike ↔ Yahoo (direct) |
+| **Collaboration** | Advertiser ↔ Yahoo (direct) |
 | **Clean Room Location** | Yahoo D360 |
-| **Data Contributor** | Nike contributes directly |
-| **Use Case** | Nike manages own campaigns |
-| **Agency Role** | None (or advisory only) |
+| **Data Contributor** | Advertiser contributes directly |
+| **Use Case** | Self-service advertisers |
+| **Agency Role** | ❌ Not required (optional optimization) |
+| **Best For** | Small brands, in-house teams, self-service |
 
 ---
 
@@ -322,16 +351,46 @@ flowchart TB
 
 ### 📋 Option Comparison Matrix
 
-| Criteria | Option 1: Nike Direct | Option 2: Dentsu Aggregated |
-|----------|----------------------|----------------------------|
+| Criteria | Option 1: Direct (Self-Service) | Option 2: Agency-Aggregated |
+|----------|--------------------------------|----------------------------|
 | **Clean Room Location** | Yahoo D360 ✅ | Yahoo D360 ✅ |
-| **Who Contributes Data** | Nike directly | Dentsu (on behalf of clients) |
-| **Number of Advertisers** | Single (Nike) | Multiple (Nike, Pepsi, Ford...) |
-| **Agency Involvement** | None or minimal | Central orchestrator |
-| **Dentsu D360 Role** | N/A | Aggregates advertiser segments |
-| **Data Flow** | Nike → Yahoo | Advertisers → Dentsu → Yahoo |
-| **Campaign Management** | Nike self-service | Dentsu managed service |
-| **Best For** | Large advertisers with in-house teams | Advertisers using agency services |
+| **Who Contributes Data** | Advertiser directly | Dentsu (on behalf of clients) |
+| **Dentsu Required?** | ❌ No (optional) | ✅ Yes (required) |
+| **Number of Advertisers** | Single | Multiple (Nike, Pepsi, Ford...) |
+| **Dentsu D360 Role** | Optional optimization | Central data aggregator |
+| **Data Flow** | Advertiser → Yahoo | Advertisers → Dentsu → Yahoo |
+| **Campaign Management** | Self-service | Agency managed |
+| **Best For** | Small/mid brands, in-house teams | Enterprise advertisers with agencies |
+| **Advertiser Data Location** | Advertiser's own D360 | Dentsu's D360 (aggregated) |
+
+### ❓ When to Use Which Option?
+
+```mermaid
+flowchart TD
+    Q1{Does advertiser<br/>use an agency?}
+    Q2{Is advertiser data<br/>in Dentsu D360?}
+    Q3{Does advertiser want<br/>self-service?}
+    
+    O1["✅ OPTION 1<br/>Direct Collaboration"]
+    O2["✅ OPTION 2<br/>Agency-Aggregated"]
+    
+    Q1 -->|No| O1
+    Q1 -->|Yes| Q2
+    Q2 -->|No| Q3
+    Q2 -->|Yes| O2
+    Q3 -->|Yes| O1
+    Q3 -->|No| O2
+```
+
+**Decision Criteria:**
+| Scenario | Recommended Option |
+|----------|-------------------|
+| Small brand, no agency | Option 1 (Direct) |
+| Large brand with in-house team | Option 1 (Direct) |
+| Enterprise using Dentsu | Option 2 (Agency) |
+| Advertiser data already in Dentsu D360 | Option 2 (Agency) |
+| Multi-brand campaigns (Nike + Pepsi) | Option 2 (Agency) |
+| Self-service preference | Option 1 (Direct) |
 
 ---
 
