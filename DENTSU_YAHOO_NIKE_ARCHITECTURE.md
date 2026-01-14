@@ -159,42 +159,39 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    subgraph PROTOCOLS["📡 COMMUNICATION PROTOCOLS"]
+    subgraph PROTOCOLS["COMMUNICATION PROTOCOLS"]
         direction TB
-        MCP["🔌 MCP<br/>Model Context Protocol<br/>AI ↔ Tools"]
-        A2A["🔗 A2A<br/>Agent-to-Agent<br/>Cross-Org Orchestration"]
-        AdCP["📋 AdCP v2.3.0<br/>Campaign Data Structure<br/>Packages + Formats"]
+        MCP["MCP Protocol"]
+        A2A["A2A Protocol"]
+        AdCP["AdCP v2.3.0"]
     end
 
-    subgraph AGENTS["🤖 AI AGENTS"]
+    subgraph AGENTS["AI AGENTS"]
         direction TB
-        NikeA["Nike Agent<br/>(Advertiser Goals)"]
-        DentsuA["Dentsu Agent<br/>(Media Planning)"]
-        YahooA["Yahoo Agent<br/>(Inventory + Sales)"]
+        NikeA["Nike Agent"]
+        DentsuA["Dentsu Agent"]
+        YahooA["Yahoo Agent"]
     end
 
-    subgraph DATA["💾 DATA LAYER"]
+    subgraph DATA["DATA LAYER"]
         direction TB
-        NikeDC["Nike Data Cloud<br/>Customer 360"]
-        DentsuDC["Dentsu Data Cloud<br/>Campaign Hub"]
-        YahooDC["Yahoo Data Cloud<br/>Audience Insights"]
-        BigQuery["Google BigQuery<br/>Single Source of Truth"]
-        CleanRoom["🔐 Clean Room<br/>Privacy-Preserving Match"]
+        NikeDC["Nike D360"]
+        DentsuDC["Dentsu D360"]
+        YahooDC["Yahoo D360"]
+        BQ["Google BigQuery"]
+        CleanRoom["Clean Room"]
     end
 
-    %% Protocol connections
     NikeA <-->|A2A| DentsuA
     DentsuA <-->|A2A| YahooA
     DentsuA <-->|MCP| YahooA
-    YahooA -->|AdCP| BigQuery
+    YahooA -->|AdCP| BQ
 
-    %% Data connections
     NikeDC -.-> CleanRoom
     YahooDC -.-> CleanRoom
     CleanRoom -.-> DentsuDC
-    BigQuery <-->|Zero Copy| YahooDC
-    
-    %% Agent to data
+    BQ <-->|Zero Copy| YahooDC
+
     NikeA --> NikeDC
     DentsuA --> DentsuDC
     YahooA --> YahooDC
@@ -445,6 +442,13 @@ flowchart TB
 2. Contribute segments to multiple publisher Clean Rooms
 3. Receive matched audience results back
 4. Orchestrate campaigns via AI agents (MCP/A2A)
+5. **Leverage publisher's native data assets** - When the Clean Room exists in the publisher's domain (e.g., Yahoo's GCP), the matched audience can be enriched with additional publisher-owned tables in Google BigQuery such as:
+   - **Demographics** (age, gender, income brackets)
+   - **Payment History** (purchase patterns, transaction frequency)
+   - **Content Consumption** (viewing habits, interests)
+   - **Device Graph** (cross-device identity)
+   
+   This enrichment is only possible because the Clean Room runs inside the publisher's infrastructure with direct access to their BigQuery data warehouse. If the Clean Room were hosted elsewhere, these proprietary datasets would not be accessible for audience enrichment.
 
 ---
 
