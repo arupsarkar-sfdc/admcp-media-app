@@ -91,65 +91,65 @@ flowchart TB
 ```mermaid
 sequenceDiagram
     autonumber
-    participant DU as 👤 Dentsu User
-    participant AF as ⚡ Agentforce
-    participant DA as 🤖 Dentsu Agent
-    participant CR as 🔐 Clean Room
-    participant NA as 🤖 Nike Agent
-    participant YA as 🤖 Yahoo Agent
-    participant MCP as 🔌 Yahoo MCP
-    participant SF as ❄️ Snowflake
-    participant DC as ☁️ Data Cloud
+    participant DU as Dentsu User
+    participant AF as Agentforce
+    participant DA as Dentsu Agent
+    participant CR as Clean Room
+    participant NA as Nike Agent
+    participant YA as Yahoo Agent
+    participant MCP as Yahoo MCP
+    participant SF as Snowflake
+    participant DC as Data Cloud
 
-    rect rgb(30, 136, 229)
-        Note over DU,AF: 1️⃣ CAMPAIGN INITIATION
-        DU->>AF: "Plan Nike running campaign<br/>for Q1 2026, $50K budget"
-        AF->>DA: MCP: Natural language parsed
+    rect rgb(187, 222, 251)
+        Note over DU,AF: STEP 1 - CAMPAIGN INITIATION
+        DU->>AF: Plan Nike running campaign for Q1 2026, $50K budget
+        AF->>DA: MCP - Natural language parsed
     end
 
-    rect rgb(46, 125, 50)
-        Note over CR: 2️⃣ CLEAN ROOM ACTIVATION
-        DA->>CR: Request matched audiences<br/>(Nike customers × Yahoo users)
-        CR->>CR: Apply k-anonymity (1000+)<br/>Differential privacy (ε=0.1)
-        CR-->>DA: 850K matched users<br/>Demographics, engagement scores
+    rect rgb(200, 230, 201)
+        Note over CR: STEP 2 - CLEAN ROOM ACTIVATION
+        DA->>CR: Request matched audiences (Nike x Yahoo)
+        CR->>CR: Apply k-anonymity and differential privacy
+        CR-->>DA: Return 850K matched users with scores
     end
 
-    rect rgb(255, 152, 0)
-        Note over DA,YA: 3️⃣ A2A AGENT ORCHESTRATION
-        DA->>NA: A2A: Confirm campaign goals
-        NA-->>DA: A2A: Approved, budget $50K
-        DA->>YA: A2A: discover_products<br/>{brief: "Nike running shoes"}
-        YA->>MCP: MCP: get_products()
-        MCP->>DC: SQL Query (Zero Copy)
-        DC->>SF: Virtual read
-        SF-->>DC: 5 Yahoo products
-        DC-->>MCP: Product catalog
+    rect rgb(255, 236, 179)
+        Note over DA,YA: STEP 3 - A2A AGENT ORCHESTRATION
+        DA->>NA: A2A - Confirm campaign goals
+        NA-->>DA: A2A - Approved, budget $50K
+        DA->>YA: A2A - discover_products for Nike running shoes
+        YA->>MCP: MCP - get_products()
+        MCP->>DC: SQL Query via Zero Copy
+        DC->>SF: Virtual read from Snowflake
+        SF-->>DC: Return 5 Yahoo products
+        DC-->>MCP: Product catalog response
         MCP-->>YA: Products with pricing
-        YA-->>DA: A2A: 5 products found<br/>Sports Video, Finance CTV...
+        YA-->>DA: A2A - 5 products found (Sports Video, Finance CTV)
     end
 
-    rect rgb(123, 31, 162)
-        Note over DA,SF: 4️⃣ CAMPAIGN CREATION (AdCP v2.3.0)
-        DA->>YA: A2A: create_campaign<br/>{packages: [...], formats: [...]}
-        YA->>MCP: MCP: create_media_buy()
-        MCP->>MCP: AdCP Validation<br/>(packages, format_ids)
-        MCP->>SF: INSERT media_buys, packages
-        SF-->>DC: Zero Copy sync (instant)
-        SF-->>MCP: campaign_id: nike_q1_2026
-        MCP-->>YA: Campaign created ✅
-        YA-->>DA: A2A: Success response
+    rect rgb(225, 190, 231)
+        Note over DA,SF: STEP 4 - CAMPAIGN CREATION (AdCP v2.3.0)
+        DA->>YA: A2A - create_campaign with packages
+        YA->>MCP: MCP - create_media_buy()
+        MCP->>MCP: AdCP Validation (packages, format_ids)
+        MCP->>SF: INSERT media_buys and packages
+        SF-->>DC: Zero Copy sync instant
+        SF-->>MCP: Return campaign_id nike_q1_2026
+        MCP-->>YA: Campaign created successfully
+        YA-->>DA: A2A - Success response
         DA-->>AF: Campaign ready
-        AF-->>DU: "✅ Campaign created!<br/>ID: nike_q1_2026"
+        AF-->>DU: Campaign created with ID nike_q1_2026
     end
 
-    rect rgb(0, 172, 193)
-        Note over DU,DC: 5️⃣ REAL-TIME MONITORING
-        DU->>AF: "How is Nike campaign performing?"
-        AF->>MCP: MCP: get_media_buy_delivery()
+    rect rgb(178, 235, 242)
+        Note over DU,DC: STEP 5 - REAL-TIME MONITORING
+        DU->>AF: How is Nike campaign performing?
+        AF->>MCP: MCP - get_media_buy_delivery()
         MCP->>DC: Query delivery_metrics
-        DC-->>MCP: Impressions, CTR, pacing
+        DC-->>MCP: Return impressions, CTR, pacing
         MCP-->>AF: Performance report
-        AF-->>DU: "8.5M impressions, 0.42% CTR"
+        AF-->>DU: 8.5M impressions, 0.42% CTR
     end
 ```
 
