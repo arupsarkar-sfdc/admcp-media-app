@@ -204,177 +204,188 @@ flowchart LR
 
 ## 🔐 Clean Room Deployment Options
 
-There are **two architectural options** for where the Data Cloud Clean Room exists, depending on the partnership model:
+Both options use **Yahoo's D360 (Data Cloud) Clean Room** as the collaboration environment. The difference is in the **collaboration model** - who initiates and how data is contributed.
+
+> **Note**: D360 is the new branding for Salesforce Data Cloud.
 
 ---
 
-### 🏠 Option 1: Publisher-Hosted Clean Room (Yahoo Data360)
+### 🏠 Option 1: Direct Advertiser Collaboration (Nike → Yahoo D360)
 
-**Recommended for**: Single publisher partnerships (Dentsu + Yahoo only)
+**Use Case**: Single advertiser working directly with Yahoo
 
-In this model, the Clean Room exists **inside Yahoo's Data Cloud (Data360 platform)**. Yahoo controls the matching environment, and Dentsu/Nike contribute their segments.
+In this model, **Nike directly collaborates** with Yahoo's D360 Clean Room. Nike contributes their first-party customer segments, and Yahoo provides audience data for matching.
 
 ```mermaid
 flowchart TB
     subgraph NIKE["🏃 NIKE (Advertiser)"]
-        NikeDC["☁️ Nike Data Cloud<br/>First-Party Data"]
-    end
-
-    subgraph DENTSU["🏢 DENTSU (Agency)"]
-        DentsuDC["☁️ Dentsu Data Cloud<br/>Campaign Management"]
-        DentsuAgent["🤖 Dentsu Agent"]
+        NikeDC["☁️ Nike D360<br/>First-Party Customer Data"]
     end
 
     subgraph YAHOO["📺 YAHOO (Publisher) - CLEAN ROOM HOST"]
-        YahooDC["☁️ Yahoo Data Cloud<br/>(Data360)"]
+        YahooDC["☁️ Yahoo D360"]
         
-        subgraph CLEANROOM["🔐 CLEAN ROOM<br/>(Inside Yahoo Data Cloud)"]
-            CR1["Nike Segments<br/>(Contributed)"]
-            CR2["Yahoo Audiences<br/>(Native)"]
+        subgraph CLEANROOM["🔐 YAHOO D360 CLEAN ROOM"]
+            CR1["Nike Segments<br/>(Contributed by Nike)"]
+            CR2["Yahoo Audiences<br/>(Native to Yahoo)"]
             CR3["🔀 Match Engine"]
-            CR4["📤 Output: Matched Audiences"]
+            CR4["📤 Matched Audiences"]
         end
         
         YahooSnowflake["❄️ Snowflake"]
     end
 
-    NikeDC -->|"Hashed IDs<br/>Segments"| CR1
+    NikeDC -->|"Hashed IDs + Segments<br/>(Direct Contribution)"| CR1
     YahooDC --> CR2
     CR1 --> CR3
     CR2 --> CR3
     CR3 --> CR4
-    CR4 -->|"Matched Results<br/>(No PII)"| DentsuDC
+    CR4 -->|"Matched Results<br/>(No PII)"| NikeDC
     CR4 --> YahooSnowflake
 ```
 
-**Advantages:**
-| Benefit | Description |
-|---------|-------------|
-| **Data Sovereignty** | Yahoo retains full control of audience data |
-| **Performance** | Yahoo data never leaves Yahoo environment |
-| **Compliance** | Publisher-controlled for GDPR/CCPA |
-| **Trust** | Industry-standard publisher Clean Room model |
-| **Built-in** | Yahoo Data360 has native Clean Room support |
-
-**Data Flow:**
-1. Nike/Dentsu contributes hashed customer IDs and segments
-2. Yahoo contributes audience data (never leaves Yahoo)
-3. Match engine runs inside Yahoo's environment
-4. Only aggregated, privacy-safe results are shared back
+**Characteristics:**
+| Aspect | Description |
+|--------|-------------|
+| **Collaboration** | Nike ↔ Yahoo (direct) |
+| **Clean Room Location** | Yahoo D360 |
+| **Data Contributor** | Nike contributes directly |
+| **Use Case** | Nike manages own campaigns |
+| **Agency Role** | None (or advisory only) |
 
 ---
 
-### 🏢 Option 2: Agency-Hosted Clean Room (Dentsu Multi-Publisher Hub)
+### 🏢 Option 2: Agency-Aggregated Collaboration (Dentsu → Yahoo D360)
 
-**Recommended for**: Multi-publisher campaigns (Yahoo + Google + Meta + TikTok)
+**Use Case**: Agency managing multiple advertisers through Yahoo
 
-In this model, Dentsu hosts their own Clean Room to match across **multiple publishers simultaneously**. This enables cross-publisher audience planning and optimization.
+In this model, **Dentsu aggregates advertiser data** from multiple clients (Nike, Pepsi, Ford) and collaborates with Yahoo's D360 Clean Room on their behalf. Dentsu's D360 connects to Yahoo's D360.
 
 ```mermaid
 flowchart TB
-    subgraph ADVERTISERS["🏃 ADVERTISERS"]
-        Nike["Nike Data Cloud"]
-        Pepsi["Pepsi Data Cloud"]
-        Ford["Ford Data Cloud"]
+    subgraph ADVERTISERS["🏃 ADVERTISERS (Dentsu Clients)"]
+        Nike["Nike D360"]
+        Pepsi["Pepsi D360"]
+        Ford["Ford D360"]
     end
 
-    subgraph DENTSU["🏢 DENTSU - CENTRAL CLEAN ROOM HOST"]
-        DentsuDC["☁️ Dentsu Data Cloud"]
+    subgraph DENTSU["🏢 DENTSU (Agency)"]
+        DentsuDC["☁️ Dentsu D360<br/>Aggregated Advertiser Data"]
+        DentsuAgent["🤖 Dentsu Agent"]
+    end
+
+    subgraph YAHOO["📺 YAHOO (Publisher) - CLEAN ROOM HOST"]
+        YahooDC["☁️ Yahoo D360"]
         
-        subgraph CLEANROOM["🔐 DENTSU CLEAN ROOM<br/>(Multi-Publisher Hub)"]
-            CR1["Advertiser Segments"]
-            CR2["Publisher Audiences<br/>(via API)"]
-            CR3["🔀 Cross-Publisher<br/>Match Engine"]
-            CR4["📊 Unified Insights"]
+        subgraph CLEANROOM["🔐 YAHOO D360 CLEAN ROOM"]
+            CR1["Dentsu Aggregated Segments<br/>(Nike + Pepsi + Ford)"]
+            CR2["Yahoo Audiences<br/>(Native to Yahoo)"]
+            CR3["🔀 Match Engine"]
+            CR4["📤 Matched Audiences<br/>Per Advertiser"]
         end
         
-        DentsuAgent["🤖 Dentsu Agent<br/>(Orchestrator)"]
+        YahooSnowflake["❄️ Snowflake"]
     end
 
-    subgraph PUBLISHERS["📺 PUBLISHERS (API Contributors)"]
-        Yahoo["Yahoo Data360<br/>Audience API"]
-        Google["Google Ads<br/>Data Hub"]
-        Meta["Meta Advanced<br/>Analytics"]
-        TikTok["TikTok for<br/>Business"]
-    end
-
-    Nike -->|"Segments"| CR1
-    Pepsi -->|"Segments"| CR1
-    Ford -->|"Segments"| CR1
+    Nike -->|"Segments"| DentsuDC
+    Pepsi -->|"Segments"| DentsuDC
+    Ford -->|"Segments"| DentsuDC
     
-    Yahoo -->|"Audience API"| CR2
-    Google -->|"Audience API"| CR2
-    Meta -->|"Audience API"| CR2
-    TikTok -->|"Audience API"| CR2
-    
+    DentsuDC -->|"Aggregated Hashed IDs<br/>(Agency Contribution)"| CR1
+    YahooDC --> CR2
     CR1 --> CR3
     CR2 --> CR3
     CR3 --> CR4
-    CR4 --> DentsuAgent
+    CR4 -->|"Matched Results<br/>Per Advertiser"| DentsuDC
+    CR4 --> YahooSnowflake
+    
+    DentsuDC --> DentsuAgent
 ```
 
-**Advantages:**
-| Benefit | Description |
-|---------|-------------|
-| **Cross-Publisher** | Match audiences across Yahoo, Google, Meta, TikTok |
-| **Unified View** | Single dashboard for all publisher overlaps |
-| **Budget Optimization** | Allocate spend based on cross-publisher insights |
-| **Agency Control** | Dentsu manages Clean Room for all clients |
-| **Scalability** | Add new publishers without new integrations |
+**Characteristics:**
+| Aspect | Description |
+|--------|-------------|
+| **Collaboration** | Dentsu ↔ Yahoo (on behalf of advertisers) |
+| **Clean Room Location** | Yahoo D360 (same as Option 1) |
+| **Data Contributor** | Dentsu aggregates from multiple advertisers |
+| **Use Case** | Agency manages campaigns for multiple clients |
+| **Agency Role** | Central orchestrator with rich advertiser datasets |
 
-**Data Flow:**
-1. Multiple advertisers (Nike, Pepsi, Ford) contribute segments to Dentsu
-2. Publishers provide audience data via secure APIs (not raw data)
-3. Dentsu's Clean Room matches across all publishers
-4. Unified insights power multi-publisher campaign orchestration
+**Why Dentsu Uses Yahoo's D360 Clean Room:**
+1. **Publisher Data Stays Put**: Yahoo's audience data never leaves Yahoo's environment
+2. **Compliance**: GDPR/CCPA compliance managed by publisher
+3. **Trust**: Industry-standard model where publishers host Clean Rooms
+4. **Performance**: No data movement = faster matching
+5. **Security**: Yahoo controls access to their audience graph
 
 ---
 
 ### 📋 Option Comparison Matrix
 
-| Criteria | Option 1: Yahoo-Hosted | Option 2: Dentsu-Hosted |
-|----------|------------------------|-------------------------|
-| **Clean Room Location** | Yahoo Data Cloud | Dentsu Data Cloud |
-| **Best For** | Single publisher | Multi-publisher |
-| **Data Control** | Publisher controls | Agency controls |
-| **Setup Complexity** | Low | Medium-High |
-| **Cross-Publisher** | ❌ No | ✅ Yes |
-| **Advertiser Segments** | Contributed | Contributed |
-| **Publisher Data** | Native | Via API |
-| **Compliance** | Publisher-managed | Agency-managed |
-| **Use Case** | Nike-Yahoo only | Nike across Yahoo+Google+Meta |
+| Criteria | Option 1: Nike Direct | Option 2: Dentsu Aggregated |
+|----------|----------------------|----------------------------|
+| **Clean Room Location** | Yahoo D360 ✅ | Yahoo D360 ✅ |
+| **Who Contributes Data** | Nike directly | Dentsu (on behalf of clients) |
+| **Number of Advertisers** | Single (Nike) | Multiple (Nike, Pepsi, Ford...) |
+| **Agency Involvement** | None or minimal | Central orchestrator |
+| **Dentsu D360 Role** | N/A | Aggregates advertiser segments |
+| **Data Flow** | Nike → Yahoo | Advertisers → Dentsu → Yahoo |
+| **Campaign Management** | Nike self-service | Dentsu managed service |
+| **Best For** | Large advertisers with in-house teams | Advertisers using agency services |
 
 ---
 
-### 🔄 Hybrid Approach (Recommended for Enterprise)
+### 🔄 Multi-Publisher Extension (Same Pattern)
 
-For large enterprises like Dentsu, a **hybrid approach** is optimal:
+When Dentsu works with **multiple publishers**, each publisher hosts their own D360 Clean Room. Dentsu contributes aggregated advertiser data to each:
 
 ```mermaid
-flowchart LR
-    subgraph DENTSU["🏢 DENTSU"]
-        DentsuCR["🔐 Dentsu Clean Room<br/>(Planning & Insights)"]
+flowchart TB
+    subgraph DENTSU["🏢 DENTSU D360<br/>(Aggregated Advertiser Data)"]
+        DentsuData["Nike + Pepsi + Ford<br/>Combined Segments"]
     end
 
-    subgraph PUBLISHERS["📺 PUBLISHER CLEAN ROOMS"]
-        YahooCR["🔐 Yahoo Clean Room<br/>(Activation)"]
-        GoogleCR["🔐 Google Clean Room<br/>(Activation)"]
-        MetaCR["🔐 Meta Clean Room<br/>(Activation)"]
+    subgraph PUBLISHERS["📺 PUBLISHER D360 CLEAN ROOMS"]
+        subgraph YAHOO_CR["Yahoo D360 Clean Room"]
+            Y1["Dentsu Segments"]
+            Y2["Yahoo Audiences"]
+            Y3["🔀 Match"]
+        end
+        
+        subgraph GOOGLE_CR["Google Ads Data Hub"]
+            G1["Dentsu Segments"]
+            G2["Google Audiences"]
+            G3["🔀 Match"]
+        end
+        
+        subgraph META_CR["Meta Advanced Analytics"]
+            M1["Dentsu Segments"]
+            M2["Meta Audiences"]
+            M3["🔀 Match"]
+        end
     end
 
-    DentsuCR -->|"Planning<br/>Insights"| YahooCR
-    DentsuCR -->|"Planning<br/>Insights"| GoogleCR
-    DentsuCR -->|"Planning<br/>Insights"| MetaCR
+    DentsuData -->|"Contribute"| Y1
+    DentsuData -->|"Contribute"| G1
+    DentsuData -->|"Contribute"| M1
     
-    YahooCR -->|"Activation<br/>Results"| DentsuCR
-    GoogleCR -->|"Activation<br/>Results"| DentsuCR
-    MetaCR -->|"Activation<br/>Results"| DentsuCR
+    Y1 --> Y3
+    Y2 --> Y3
+    G1 --> G3
+    G2 --> G3
+    M1 --> M3
+    M2 --> M3
+    
+    Y3 -->|"Yahoo Matched<br/>Audiences"| DentsuData
+    G3 -->|"Google Matched<br/>Audiences"| DentsuData
+    M3 -->|"Meta Matched<br/>Audiences"| DentsuData
 ```
 
-**How it works:**
-1. **Dentsu Clean Room** → Used for **planning** (cross-publisher insights)
-2. **Publisher Clean Rooms** → Used for **activation** (actual campaign targeting)
-3. Results flow back to Dentsu for unified reporting
+**Key Principle**: Clean Rooms are **always hosted by the publisher** (Yahoo, Google, Meta). Dentsu's D360 is used to:
+1. Aggregate advertiser first-party data
+2. Contribute segments to multiple publisher Clean Rooms
+3. Receive matched audience results back
+4. Orchestrate campaigns via AI agents (MCP/A2A)
 
 ---
 
