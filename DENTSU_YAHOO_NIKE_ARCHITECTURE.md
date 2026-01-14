@@ -48,11 +48,11 @@ flowchart TB
         YahooDC["☁️ Yahoo Data Cloud<br/>Audience Data"]
         YahooMCP["🔌 Yahoo MCP Server<br/>(AdCP v2.3.0)"]
         YahooAgent["🤖 Yahoo A2A Agent<br/>(Sales Agent)"]
-        YahooGoogle BigQuery["❄️ Google BigQuery<br/>Campaign & Metrics"]
+        YahooBQ["📊 Google BigQuery<br/>Campaign & Metrics"]
         YahooInventory["📦 Yahoo Inventory<br/>Sports, Finance, Mail"]
         
-        YahooInventory --> YahooGoogle BigQuery
-        YahooGoogle BigQuery <-->|"Zero Copy"| YahooDC
+        YahooInventory --> YahooBQ
+        YahooBQ <-->|"Zero Copy"| YahooDC
         YahooDC --> YahooMCP
         YahooMCP --> YahooAgent
     end
@@ -71,7 +71,7 @@ flowchart TB
     NikeDC -.->|"First-Party<br/>Segments"| CLEANROOM
     YahooDC -.->|"Publisher<br/>Audiences"| CLEANROOM
     CLEANROOM -.->|"Matched Audiences<br/>850K Users"| DentsuDC
-    CLEANROOM -.->|"Overlap Data"| YahooGoogle BigQuery
+    CLEANROOM -.->|"Overlap Data"| YahooBQ
 
     %% A2A Protocol Connections
     NikeAgent <-->|"🔗 A2A Protocol<br/>Campaign Goals"| DentsuAgent
@@ -81,7 +81,7 @@ flowchart TB
     Agentforce <-->|"📡 MCP Protocol<br/>JSON-RPC 2.0"| YahooMCP
 
     %% AdCP Data Flow
-    YahooMCP -->|"📋 AdCP v2.3.0<br/>Packages, Formats"| YahooGoogle BigQuery
+    YahooMCP -->|"📋 AdCP v2.3.0<br/>Packages, Formats"| YahooBQ
 ```
 
 ---
@@ -178,7 +178,7 @@ flowchart LR
         NikeDC["Nike Data Cloud<br/>Customer 360"]
         DentsuDC["Dentsu Data Cloud<br/>Campaign Hub"]
         YahooDC["Yahoo Data Cloud<br/>Audience Insights"]
-        Google BigQuery["Google BigQuery<br/>Single Source of Truth"]
+        BigQuery["Google BigQuery<br/>Single Source of Truth"]
         CleanRoom["🔐 Clean Room<br/>Privacy-Preserving Match"]
     end
 
@@ -186,13 +186,13 @@ flowchart LR
     NikeA <-->|A2A| DentsuA
     DentsuA <-->|A2A| YahooA
     DentsuA <-->|MCP| YahooA
-    YahooA -->|AdCP| Google BigQuery
+    YahooA -->|AdCP| BigQuery
 
     %% Data connections
     NikeDC -.-> CleanRoom
     YahooDC -.-> CleanRoom
     CleanRoom -.-> DentsuDC
-    Google BigQuery <-->|Zero Copy| YahooDC
+    BigQuery <-->|Zero Copy| YahooDC
     
     %% Agent to data
     NikeA --> NikeDC
@@ -237,7 +237,7 @@ flowchart TB
             CR4["📤 Matched Audiences"]
         end
         
-        YahooGoogle BigQuery["❄️ Google BigQuery"]
+        YahooBQ["📊 Google BigQuery"]
         YahooMCP["🔌 Yahoo MCP Server"]
     end
 
@@ -247,7 +247,7 @@ flowchart TB
     CR2 --> CR3
     CR3 --> CR4
     CR4 -->|"Matched Results<br/>(No PII)"| AdvDC
-    CR4 --> YahooGoogle BigQuery
+    CR4 --> YahooBQ
     
     %% Dentsu is OPTIONAL - dotted lines
     CR4 -.->|"Optional: Results Copy<br/>for Optimization"| DentsuDC
@@ -313,7 +313,7 @@ flowchart TB
             CR4["📤 Matched Audiences<br/>Per Advertiser"]
         end
         
-        YahooGoogle BigQuery["❄️ Google BigQuery"]
+        YahooBQ["📊 Google BigQuery"]
     end
 
     Nike -->|"Segments"| DentsuDC
@@ -326,7 +326,7 @@ flowchart TB
     CR2 --> CR3
     CR3 --> CR4
     CR4 -->|"Matched Results<br/>Per Advertiser"| DentsuDC
-    CR4 --> YahooGoogle BigQuery
+    CR4 --> YahooBQ
     
     DentsuDC --> DentsuAgent
 ```
@@ -485,7 +485,7 @@ flowchart TD
     CR4 --> OUTPUT
 
     OUTPUT -->|"Available to<br/>Dentsu Agent"| DA["🤖 Dentsu Agent"]
-    OUTPUT -->|"Stored in<br/>Google BigQuery"| SF["❄️ Google BigQuery"]
+    OUTPUT -->|"Stored in<br/>Google BigQuery"| BQ["📊 Google BigQuery"]
 ```
 
 ---
