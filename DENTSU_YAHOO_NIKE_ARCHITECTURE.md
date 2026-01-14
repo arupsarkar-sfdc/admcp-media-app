@@ -48,11 +48,11 @@ flowchart TB
         YahooDC["☁️ Yahoo Data Cloud<br/>Audience Data"]
         YahooMCP["🔌 Yahoo MCP Server<br/>(AdCP v2.3.0)"]
         YahooAgent["🤖 Yahoo A2A Agent<br/>(Sales Agent)"]
-        YahooSnowflake["❄️ Snowflake<br/>Campaign & Metrics"]
+        YahooGoogle BigQuery["❄️ Google BigQuery<br/>Campaign & Metrics"]
         YahooInventory["📦 Yahoo Inventory<br/>Sports, Finance, Mail"]
         
-        YahooInventory --> YahooSnowflake
-        YahooSnowflake <-->|"Zero Copy"| YahooDC
+        YahooInventory --> YahooGoogle BigQuery
+        YahooGoogle BigQuery <-->|"Zero Copy"| YahooDC
         YahooDC --> YahooMCP
         YahooMCP --> YahooAgent
     end
@@ -71,7 +71,7 @@ flowchart TB
     NikeDC -.->|"First-Party<br/>Segments"| CLEANROOM
     YahooDC -.->|"Publisher<br/>Audiences"| CLEANROOM
     CLEANROOM -.->|"Matched Audiences<br/>850K Users"| DentsuDC
-    CLEANROOM -.->|"Overlap Data"| YahooSnowflake
+    CLEANROOM -.->|"Overlap Data"| YahooGoogle BigQuery
 
     %% A2A Protocol Connections
     NikeAgent <-->|"🔗 A2A Protocol<br/>Campaign Goals"| DentsuAgent
@@ -81,7 +81,7 @@ flowchart TB
     Agentforce <-->|"📡 MCP Protocol<br/>JSON-RPC 2.0"| YahooMCP
 
     %% AdCP Data Flow
-    YahooMCP -->|"📋 AdCP v2.3.0<br/>Packages, Formats"| YahooSnowflake
+    YahooMCP -->|"📋 AdCP v2.3.0<br/>Packages, Formats"| YahooGoogle BigQuery
 ```
 
 ---
@@ -98,7 +98,7 @@ sequenceDiagram
     participant NA as Nike Agent
     participant YA as Yahoo Agent
     participant MCP as Yahoo MCP
-    participant SF as Snowflake
+    participant SF as Google BigQuery
     participant DC as Data Cloud
 
     rect rgb(187, 222, 251)
@@ -121,7 +121,7 @@ sequenceDiagram
         DA->>YA: A2A - discover_products for Nike running shoes
         YA->>MCP: MCP - get_products()
         MCP->>DC: SQL Query via Zero Copy
-        DC->>SF: Virtual read from Snowflake
+        DC->>SF: Virtual read from Google BigQuery
         SF-->>DC: Return 5 Yahoo products
         DC-->>MCP: Product catalog response
         MCP-->>YA: Products with pricing
@@ -178,7 +178,7 @@ flowchart LR
         NikeDC["Nike Data Cloud<br/>Customer 360"]
         DentsuDC["Dentsu Data Cloud<br/>Campaign Hub"]
         YahooDC["Yahoo Data Cloud<br/>Audience Insights"]
-        Snowflake["Snowflake<br/>Single Source of Truth"]
+        Google BigQuery["Google BigQuery<br/>Single Source of Truth"]
         CleanRoom["🔐 Clean Room<br/>Privacy-Preserving Match"]
     end
 
@@ -186,13 +186,13 @@ flowchart LR
     NikeA <-->|A2A| DentsuA
     DentsuA <-->|A2A| YahooA
     DentsuA <-->|MCP| YahooA
-    YahooA -->|AdCP| Snowflake
+    YahooA -->|AdCP| Google BigQuery
 
     %% Data connections
     NikeDC -.-> CleanRoom
     YahooDC -.-> CleanRoom
     CleanRoom -.-> DentsuDC
-    Snowflake <-->|Zero Copy| YahooDC
+    Google BigQuery <-->|Zero Copy| YahooDC
     
     %% Agent to data
     NikeA --> NikeDC
@@ -237,7 +237,7 @@ flowchart TB
             CR4["📤 Matched Audiences"]
         end
         
-        YahooSnowflake["❄️ Snowflake"]
+        YahooGoogle BigQuery["❄️ Google BigQuery"]
         YahooMCP["🔌 Yahoo MCP Server"]
     end
 
@@ -247,7 +247,7 @@ flowchart TB
     CR2 --> CR3
     CR3 --> CR4
     CR4 -->|"Matched Results<br/>(No PII)"| AdvDC
-    CR4 --> YahooSnowflake
+    CR4 --> YahooGoogle BigQuery
     
     %% Dentsu is OPTIONAL - dotted lines
     CR4 -.->|"Optional: Results Copy<br/>for Optimization"| DentsuDC
@@ -313,7 +313,7 @@ flowchart TB
             CR4["📤 Matched Audiences<br/>Per Advertiser"]
         end
         
-        YahooSnowflake["❄️ Snowflake"]
+        YahooGoogle BigQuery["❄️ Google BigQuery"]
     end
 
     Nike -->|"Segments"| DentsuDC
@@ -326,7 +326,7 @@ flowchart TB
     CR2 --> CR3
     CR3 --> CR4
     CR4 -->|"Matched Results<br/>Per Advertiser"| DentsuDC
-    CR4 --> YahooSnowflake
+    CR4 --> YahooGoogle BigQuery
     
     DentsuDC --> DentsuAgent
 ```
@@ -485,7 +485,7 @@ flowchart TD
     CR4 --> OUTPUT
 
     OUTPUT -->|"Available to<br/>Dentsu Agent"| DA["🤖 Dentsu Agent"]
-    OUTPUT -->|"Stored in<br/>Snowflake"| SF["❄️ Snowflake"]
+    OUTPUT -->|"Stored in<br/>Google BigQuery"| SF["❄️ Google BigQuery"]
 ```
 
 ---
@@ -498,7 +498,7 @@ flowchart TD
 | **Dentsu** | Agency | Campaign management, planning | Dentsu A2A Agent (Orchestrator) + Agentforce | A2A (both directions), MCP |
 | **Yahoo** | Publisher | Audience data, inventory | Yahoo A2A Agent + MCP Server | MCP, A2A, AdCP v2.3.0 |
 | **Clean Room** | Privacy Layer | Matched audiences | N/A | Data Cloud Native |
-| **Snowflake** | Data Warehouse | Campaign metrics, packages | N/A | Zero Copy to Data Cloud |
+| **Google BigQuery** | Data Warehouse | Campaign metrics, packages | N/A | Zero Copy to Data Cloud |
 
 ---
 
@@ -526,7 +526,7 @@ flowchart TD
 ## 🎯 Key Architectural Principles
 
 1. **Privacy-First**: Clean Room ensures no raw PII is shared between Nike and Yahoo
-2. **Zero Copy**: Snowflake data appears instantly in Data Cloud without ETL
+2. **Zero Copy**: Google BigQuery data appears instantly in Data Cloud without ETL
 3. **Protocol Standardization**: MCP for AI tools, A2A for agent orchestration, AdCP for campaign structure
 4. **Agent Orchestration**: Dentsu Agent acts as the central coordinator between advertiser (Nike) and publisher (Yahoo)
 5. **Real-Time**: Campaign creation and monitoring happen in seconds, not days
@@ -570,7 +570,7 @@ flowchart TD
 - [A2A Protocol](https://github.com/google/a2a-sdk)
 - [AdCP Specification](https://github.com/adcontextprotocol/adcp)
 - [Salesforce Data Cloud](https://www.salesforce.com/data-cloud/)
-- [Snowflake Zero Copy](https://docs.snowflake.com/en/user-guide/data-share-partners)
+- [Google BigQuery Data Sharing](https://cloud.google.com/bigquery/docs/analytics-hub-introduction)
 
 ---
 
