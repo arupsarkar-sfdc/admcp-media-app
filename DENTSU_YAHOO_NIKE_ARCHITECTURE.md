@@ -202,7 +202,183 @@ flowchart LR
 
 ---
 
-## 🔐 Clean Room Data Flow
+## 🔐 Clean Room Deployment Options
+
+There are **two architectural options** for where the Data Cloud Clean Room exists, depending on the partnership model:
+
+---
+
+### 🏠 Option 1: Publisher-Hosted Clean Room (Yahoo Data360)
+
+**Recommended for**: Single publisher partnerships (Dentsu + Yahoo only)
+
+In this model, the Clean Room exists **inside Yahoo's Data Cloud (Data360 platform)**. Yahoo controls the matching environment, and Dentsu/Nike contribute their segments.
+
+```mermaid
+flowchart TB
+    subgraph NIKE["🏃 NIKE (Advertiser)"]
+        NikeDC["☁️ Nike Data Cloud<br/>First-Party Data"]
+    end
+
+    subgraph DENTSU["🏢 DENTSU (Agency)"]
+        DentsuDC["☁️ Dentsu Data Cloud<br/>Campaign Management"]
+        DentsuAgent["🤖 Dentsu Agent"]
+    end
+
+    subgraph YAHOO["📺 YAHOO (Publisher) - CLEAN ROOM HOST"]
+        YahooDC["☁️ Yahoo Data Cloud<br/>(Data360)"]
+        
+        subgraph CLEANROOM["🔐 CLEAN ROOM<br/>(Inside Yahoo Data Cloud)"]
+            CR1["Nike Segments<br/>(Contributed)"]
+            CR2["Yahoo Audiences<br/>(Native)"]
+            CR3["🔀 Match Engine"]
+            CR4["📤 Output: Matched Audiences"]
+        end
+        
+        YahooSnowflake["❄️ Snowflake"]
+    end
+
+    NikeDC -->|"Hashed IDs<br/>Segments"| CR1
+    YahooDC --> CR2
+    CR1 --> CR3
+    CR2 --> CR3
+    CR3 --> CR4
+    CR4 -->|"Matched Results<br/>(No PII)"| DentsuDC
+    CR4 --> YahooSnowflake
+```
+
+**Advantages:**
+| Benefit | Description |
+|---------|-------------|
+| **Data Sovereignty** | Yahoo retains full control of audience data |
+| **Performance** | Yahoo data never leaves Yahoo environment |
+| **Compliance** | Publisher-controlled for GDPR/CCPA |
+| **Trust** | Industry-standard publisher Clean Room model |
+| **Built-in** | Yahoo Data360 has native Clean Room support |
+
+**Data Flow:**
+1. Nike/Dentsu contributes hashed customer IDs and segments
+2. Yahoo contributes audience data (never leaves Yahoo)
+3. Match engine runs inside Yahoo's environment
+4. Only aggregated, privacy-safe results are shared back
+
+---
+
+### 🏢 Option 2: Agency-Hosted Clean Room (Dentsu Multi-Publisher Hub)
+
+**Recommended for**: Multi-publisher campaigns (Yahoo + Google + Meta + TikTok)
+
+In this model, Dentsu hosts their own Clean Room to match across **multiple publishers simultaneously**. This enables cross-publisher audience planning and optimization.
+
+```mermaid
+flowchart TB
+    subgraph ADVERTISERS["🏃 ADVERTISERS"]
+        Nike["Nike Data Cloud"]
+        Pepsi["Pepsi Data Cloud"]
+        Ford["Ford Data Cloud"]
+    end
+
+    subgraph DENTSU["🏢 DENTSU - CENTRAL CLEAN ROOM HOST"]
+        DentsuDC["☁️ Dentsu Data Cloud"]
+        
+        subgraph CLEANROOM["🔐 DENTSU CLEAN ROOM<br/>(Multi-Publisher Hub)"]
+            CR1["Advertiser Segments"]
+            CR2["Publisher Audiences<br/>(via API)"]
+            CR3["🔀 Cross-Publisher<br/>Match Engine"]
+            CR4["📊 Unified Insights"]
+        end
+        
+        DentsuAgent["🤖 Dentsu Agent<br/>(Orchestrator)"]
+    end
+
+    subgraph PUBLISHERS["📺 PUBLISHERS (API Contributors)"]
+        Yahoo["Yahoo Data360<br/>Audience API"]
+        Google["Google Ads<br/>Data Hub"]
+        Meta["Meta Advanced<br/>Analytics"]
+        TikTok["TikTok for<br/>Business"]
+    end
+
+    Nike -->|"Segments"| CR1
+    Pepsi -->|"Segments"| CR1
+    Ford -->|"Segments"| CR1
+    
+    Yahoo -->|"Audience API"| CR2
+    Google -->|"Audience API"| CR2
+    Meta -->|"Audience API"| CR2
+    TikTok -->|"Audience API"| CR2
+    
+    CR1 --> CR3
+    CR2 --> CR3
+    CR3 --> CR4
+    CR4 --> DentsuAgent
+```
+
+**Advantages:**
+| Benefit | Description |
+|---------|-------------|
+| **Cross-Publisher** | Match audiences across Yahoo, Google, Meta, TikTok |
+| **Unified View** | Single dashboard for all publisher overlaps |
+| **Budget Optimization** | Allocate spend based on cross-publisher insights |
+| **Agency Control** | Dentsu manages Clean Room for all clients |
+| **Scalability** | Add new publishers without new integrations |
+
+**Data Flow:**
+1. Multiple advertisers (Nike, Pepsi, Ford) contribute segments to Dentsu
+2. Publishers provide audience data via secure APIs (not raw data)
+3. Dentsu's Clean Room matches across all publishers
+4. Unified insights power multi-publisher campaign orchestration
+
+---
+
+### 📋 Option Comparison Matrix
+
+| Criteria | Option 1: Yahoo-Hosted | Option 2: Dentsu-Hosted |
+|----------|------------------------|-------------------------|
+| **Clean Room Location** | Yahoo Data Cloud | Dentsu Data Cloud |
+| **Best For** | Single publisher | Multi-publisher |
+| **Data Control** | Publisher controls | Agency controls |
+| **Setup Complexity** | Low | Medium-High |
+| **Cross-Publisher** | ❌ No | ✅ Yes |
+| **Advertiser Segments** | Contributed | Contributed |
+| **Publisher Data** | Native | Via API |
+| **Compliance** | Publisher-managed | Agency-managed |
+| **Use Case** | Nike-Yahoo only | Nike across Yahoo+Google+Meta |
+
+---
+
+### 🔄 Hybrid Approach (Recommended for Enterprise)
+
+For large enterprises like Dentsu, a **hybrid approach** is optimal:
+
+```mermaid
+flowchart LR
+    subgraph DENTSU["🏢 DENTSU"]
+        DentsuCR["🔐 Dentsu Clean Room<br/>(Planning & Insights)"]
+    end
+
+    subgraph PUBLISHERS["📺 PUBLISHER CLEAN ROOMS"]
+        YahooCR["🔐 Yahoo Clean Room<br/>(Activation)"]
+        GoogleCR["🔐 Google Clean Room<br/>(Activation)"]
+        MetaCR["🔐 Meta Clean Room<br/>(Activation)"]
+    end
+
+    DentsuCR -->|"Planning<br/>Insights"| YahooCR
+    DentsuCR -->|"Planning<br/>Insights"| GoogleCR
+    DentsuCR -->|"Planning<br/>Insights"| MetaCR
+    
+    YahooCR -->|"Activation<br/>Results"| DentsuCR
+    GoogleCR -->|"Activation<br/>Results"| DentsuCR
+    MetaCR -->|"Activation<br/>Results"| DentsuCR
+```
+
+**How it works:**
+1. **Dentsu Clean Room** → Used for **planning** (cross-publisher insights)
+2. **Publisher Clean Rooms** → Used for **activation** (actual campaign targeting)
+3. Results flow back to Dentsu for unified reporting
+
+---
+
+## 🔐 Clean Room Data Flow (Detailed)
 
 ```mermaid
 flowchart TD
