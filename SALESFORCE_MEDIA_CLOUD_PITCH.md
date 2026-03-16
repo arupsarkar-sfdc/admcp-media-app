@@ -9,32 +9,20 @@
 
 ## The One-Sentence Pitch
 
-> **We have built the infrastructure that makes Salesforce the operating system for the $1 trillion global advertising industry—and no competitor can replicate it.**
+> **We have built the infrastructure that makes Salesforce the operating system for global advertising—and no competitor can replicate it.**
 
 ---
 
-## The Market Opportunity
+## The Problem Every Advertiser Faces
 
-### The Numbers
-
-| Metric | Value | Source |
-|--------|-------|--------|
-| Global Digital Ad Spend (2025) | **$680 billion** | eMarketer |
-| Projected (2028) | **$1 trillion** | Statista |
-| Enterprise Media Tech Spend | **$45 billion** | Gartner |
-| Programmatic Ad Spend | **$550 billion** (81%) | IAB |
-| CAGR | **12.4%** | Grand View Research |
-
-### The Pain
-
-Every enterprise advertiser (Nike, Coca-Cola, P&G, Unilever) faces the same problem:
+Every enterprise advertiser (Nike, Coca-Cola, P&G, Unilever) has the same pain:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │                    THE CURRENT STATE                             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│    Nike Marketing Team                                           │
+│    Enterprise Marketing Team                                     │
 │         │                                                        │
 │         ├──→ Yahoo Ads Platform (Manual login, different UI)     │
 │         ├──→ Google Ads Platform (Different API, different data) │
@@ -42,9 +30,9 @@ Every enterprise advertiser (Nike, Coca-Cola, P&G, Unilever) faces the same prob
 │         ├──→ TikTok Ads (Different everything)                   │
 │         ├──→ LinkedIn Ads (Yet another system)                   │
 │         │                                                        │
-│         └──→ 5 dashboards, 5 logins, 5 data silos                │
+│         └──→ 5 dashboards, 5 logins, 5 data silos, 5 APIs       │
 │                                                                  │
-│    Result: 2-3 days to launch, $300K/year in labor, 15% waste    │
+│    Result: Days to launch campaigns, fragmented data, manual work│
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -53,9 +41,7 @@ Every enterprise advertiser (Nike, Coca-Cola, P&G, Unilever) faces the same prob
 
 ---
 
-## Why Salesforce Wins
-
-### Our Unique Position: The Three Moats
+## Why Salesforce Wins: The Three Moats
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -84,7 +70,7 @@ Every enterprise advertiser (Nike, Coca-Cola, P&G, Unilever) faces the same prob
 
 **What we built**: An MCP (Model Context Protocol) server that lets Agentforce manage advertising campaigns across publishers using natural language.
 
-**Why it matters**:
+**The transformation**:
 
 ```
 BEFORE (Every competitor):
@@ -93,16 +79,16 @@ BEFORE (Every competitor):
 │  User → Learn Google API → Write different code → Debug     │
 │  User → Learn Meta API → Write yet another code → Debug     │
 │                                                              │
-│  Time: 6 months │ Cost: $500K │ Maintenance: $200K/year     │
+│  Result: Months of integration work per platform             │
 └──────────────────────────────────────────────────────────────┘
 
 AFTER (Salesforce Media Cloud):
 ┌──────────────────────────────────────────────────────────────┐
-│  User → "Create a $50K campaign for Nike on Yahoo"          │
+│  User → "Create a campaign for Nike on Yahoo Sports"        │
 │                                                              │
 │  Agentforce → MCP → Yahoo MCP Server → Campaign Created     │
 │                                                              │
-│  Time: 30 seconds │ Cost: $0 │ Maintenance: $0              │
+│  Result: Seconds to launch, natural language interface       │
 └──────────────────────────────────────────────────────────────┘
 ```
 
@@ -114,137 +100,120 @@ AFTER (Salesforce Media Cloud):
 | **A2A** | Agent ↔ Agent orchestration | Multi-cloud orchestration |
 | **AdCP v2.3.0** | Campaign data standard | IAB compliance built-in |
 
-**No competitor has this**:
-- Adobe: No AI agent platform
-- Google: Walled garden, won't integrate with competitors
-- Oracle: No modern AI, legacy architecture
-- The Trade Desk: DSP only, not a platform
+**What competitors lack**:
+- **Adobe**: No AI agent platform comparable to Agentforce
+- **Google**: Walled garden—won't integrate with competitors
+- **Oracle**: Legacy architecture, no modern AI agent capability
+- **The Trade Desk**: DSP only, not an enterprise platform
 
 ---
 
 ### MOAT #2: Data Cloud + Zero Copy = Real-Time Everything
 
-**What we built**: Campaigns write to publisher's BigQuery/Snowflake, instantly visible in Data Cloud via Zero Copy.
-
-**Why it matters**:
+**What we built**: Campaigns write to publisher's BigQuery/Snowflake, instantly visible in Data Cloud via Zero Copy—no ETL.
 
 ```
-TRADITIONAL (Every competitor):
+TRADITIONAL APPROACH:
 ┌────────────────────────────────────────────────────────────────┐
 │                                                                │
-│  Yahoo BigQuery → ETL (1-24 hrs) → Data Warehouse → Reports   │
+│  Publisher Data → ETL Pipeline → Data Warehouse → Reports     │
 │                                                                │
 │  Problems:                                                     │
-│  • Stale data (hours old)                                      │
-│  • Data duplication (2x storage cost)                          │
-│  • Sync failures (version conflicts)                           │
-│  • Complex pipelines (maintenance nightmare)                   │
+│  • Stale data (hours or days old)                              │
+│  • Data duplication                                            │
+│  • Sync failures and version conflicts                         │
+│  • Complex pipeline maintenance                                │
 │                                                                │
 └────────────────────────────────────────────────────────────────┘
 
 SALESFORCE MEDIA CLOUD:
 ┌────────────────────────────────────────────────────────────────┐
 │                                                                │
-│  Yahoo BigQuery ←──Zero Copy──→ Data Cloud                     │
-│        │                              │                        │
-│        │                              │                        │
-│     WRITE                          READ                        │
-│   (Campaign                    (Real-time                      │
-│    created)                     reporting)                     │
-│        │                              │                        │
-│        └──── INSTANT (0 seconds) ─────┘                        │
+│  Publisher BigQuery ←── Zero Copy ──→ Data Cloud               │
 │                                                                │
 │  Benefits:                                                     │
-│  • Real-time visibility                                        │
-│  • Zero data duplication                                       │
-│  • Zero ETL failures                                           │
-│  • Zero maintenance                                            │
+│  • Instant visibility (no ETL lag)                             │
+│  • No data duplication                                         │
+│  • No sync failures                                            │
+│  • No pipeline maintenance                                     │
 │                                                                │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-**No competitor has this**:
-- Adobe: No Zero Copy partnership with BigQuery/Snowflake
-- Google: Won't share data with Salesforce
-- Oracle: Legacy data architecture, no real-time
-- The Trade Desk: No unified data platform
+**What competitors lack**:
+- **Adobe**: No Zero Copy partnership with BigQuery/Snowflake
+- **Google**: Won't share data outside their ecosystem
+- **Oracle**: Legacy data architecture
+- **The Trade Desk**: No unified data platform
 
 ---
 
 ### MOAT #3: Clean Room + Customer 360 = Privacy-Safe Activation
 
-**What we built**: Advertisers match their Customer 360 data with publisher audiences in Data Cloud Clean Rooms, then activate via MCP.
-
-**Why it matters**:
+**What we built**: Advertisers match their Customer 360 data with publisher audiences in D360 Clean Rooms, then activate campaigns via MCP.
 
 ```
-THE PRIVACY PROBLEM (Everyone has this):
+THE PRIVACY CHALLENGE:
 ┌────────────────────────────────────────────────────────────────┐
 │                                                                │
-│  Nike: "We have 10M customer emails"                           │
-│  Yahoo: "We have 200M user profiles"                           │
+│  Advertiser: "We have millions of customer records"           │
+│  Publisher: "We have hundreds of millions of user profiles"   │
 │                                                                │
-│  Problem: Can't share raw data (GDPR, CCPA, privacy laws)      │
+│  Problem: Can't share raw data (GDPR, CCPA, privacy laws)     │
 │                                                                │
-│  Current solution: Third-party data brokers (going away)       │
-│                    Cookie matching (deprecated)                 │
-│                    Guesswork (inefficient)                      │
+│  Old solutions (dying):                                        │
+│  • Third-party data brokers                                    │
+│  • Cookie matching                                             │
+│  • Guesswork                                                   │
 │                                                                │
 └────────────────────────────────────────────────────────────────┘
 
-SALESFORCE CLEAN ROOM + MEDIA CLOUD:
+SALESFORCE SOLUTION:
 ┌────────────────────────────────────────────────────────────────┐
 │                                                                │
-│  Nike Customer 360          Yahoo D360                         │
-│  (10M customers)            (200M users)                       │
-│         │                        │                             │
-│         └──────────┬─────────────┘                             │
-│                    │                                           │
+│  Customer 360            Publisher D360                        │
+│  (Advertiser CRM)        (Audience Data)                       │
+│         │                      │                               │
+│         └──────────┬───────────┘                               │
 │                    ▼                                           │
 │         ┌─────────────────────┐                                │
 │         │   D360 CLEAN ROOM   │                                │
-│         │  (Yahoo-hosted)     │                                │
 │         │                     │                                │
 │         │  • Hashed ID match  │                                │
 │         │  • k-anonymity      │                                │
 │         │  • Differential     │                                │
 │         │    privacy          │                                │
+│         │  • No PII exposed   │                                │
 │         │                     │                                │
 │         └──────────┬──────────┘                                │
-│                    │                                           │
 │                    ▼                                           │
 │         ┌─────────────────────┐                                │
-│         │  850K Matched Users │                                │
-│         │  56.7% Match Rate   │                                │
-│         │  No PII exposed     │                                │
+│         │   Matched Audience  │                                │
+│         │   (Privacy-Safe)    │                                │
 │         └──────────┬──────────┘                                │
-│                    │                                           │
 │                    ▼                                           │
 │         ┌─────────────────────┐                                │
 │         │  AGENTFORCE + MCP   │                                │
-│         │  "Target matched    │                                │
-│         │   audience on Yahoo"│                                │
+│         │  Campaign Activation│                                │
 │         └─────────────────────┘                                │
-│                                                                │
-│  Result: Privacy-safe, first-party targeting at scale          │
 │                                                                │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-**No competitor has this**:
-- Adobe: No Customer 360, limited Clean Room
-- Google: Walled garden, won't share match data
-- Oracle: No Clean Room, no CRM data
-- The Trade Desk: No CRM integration, no Clean Room
+**What competitors lack**:
+- **Adobe**: No Customer 360 equivalent, limited Clean Room
+- **Google**: Walled garden—won't share match data externally
+- **Oracle**: No Clean Room, no CRM integration
+- **The Trade Desk**: No CRM data, no Clean Room
 
 ---
 
-## The Complete Workflow: Why We Win
+## The Complete Workflow: What We Built
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                    SALESFORCE MEDIA CLOUD                            │
-│                    Complete Workflow                                 │
+│                    End-to-End Workflow                               │
 └─────────────────────────────────────────────────────────────────────┘
 
      STEP 1                    STEP 2                    STEP 3
@@ -256,14 +225,9 @@ SALESFORCE CLEAN ROOM + MEDIA CLOUD:
 │  customers?" │         │  publisher"  │         │  campaign"   │
 └──────────────┘         └──────────────┘         └──────────────┘
        │                        │                        │
-       │ Salesforce             │ Salesforce             │ Salesforce
-       │ Only                   │ Only                   │ Only
        ▼                        ▼                        ▼
-┌──────────────┐         ┌──────────────┐         ┌──────────────┐
-│  CRM data    │         │  Privacy-    │         │  AI-native   │
-│  unified     │         │  preserving  │         │  campaign    │
-│              │         │  audience    │         │  creation    │
-└──────────────┘         └──────────────┘         └──────────────┘
+   Salesforce              Salesforce              Salesforce
+     Only                    Only                    Only
        │                        │                        │
        └────────────────────────┼────────────────────────┘
                                 │
@@ -274,23 +238,17 @@ SALESFORCE CLEAN ROOM + MEDIA CLOUD:
                    │  REPORTING   │
                    │  (Zero Copy) │
                    │              │
-                   │ Campaign     │
-                   │ performance  │
-                   │ in Data      │
-                   │ Cloud        │
-                   └──────────────┘
-                          │
-                          │ Salesforce Only
-                          ▼
-                   ┌──────────────┐
                    │  Unified     │
                    │  dashboard   │
                    │  across all  │
                    │  publishers  │
                    └──────────────┘
+                          │
+                          ▼
+                    Salesforce Only
 
 ────────────────────────────────────────────────────────────────────────
-                    COMPETITIVE LANDSCAPE
+                    COMPETITIVE CAPABILITY MATRIX
 ────────────────────────────────────────────────────────────────────────
 
              Customer 360  Clean Room  AI Agent  Zero Copy  TOTAL
@@ -305,125 +263,114 @@ Trade Desk      ❌           ❌          ❌         ❌        0/4
 
 ---
 
-## The Economic Case
+## What We Have Today (Proof of Concept)
 
-### For Enterprise Advertisers
+This is not a slide deck. We built working software:
 
-| Metric | Before Salesforce Media Cloud | After | Savings |
-|--------|------------------------------|-------|---------|
-| Campaign setup time | 2-3 days | 30 seconds | **99%** |
-| Systems to manage | 5+ platforms | 1 (Salesforce) | **80%** |
-| Integration cost | $500K-$1M | $100K | **$400K-$900K** |
-| Annual labor cost | $300K | $30K | **$270K/year** |
-| Data sync issues | Weekly | Zero | **100%** |
-| Campaign errors | 15% | <1% | **93%** |
+| Component | Status | Details |
+|-----------|--------|---------|
+| **Yahoo MCP Server** | ✅ Deployed | Production on Heroku, 9 MCP tools |
+| **AdCP v2.3.0 Compliance** | ✅ Complete | IAB-standard campaign structure |
+| **Data Cloud Integration** | ✅ Working | Zero Copy read path |
+| **BigQuery Writes** | ✅ Working | Direct writes, instant visibility |
+| **Agentforce Compatible** | ✅ Validated | MCP protocol native |
+| **AI Agent (Claude)** | ✅ Working | Natural language campaign creation |
+| **Streamlit UI** | ✅ Working | Web interface for demos |
+| **Clean Room Architecture** | ✅ Designed | Dentsu + Yahoo model validated |
 
-**ROI for a $10M/year advertiser**:
-- Performance improvement from faster optimization: **20% = $2M**
-- Labor savings: **$270K**
-- Integration savings: **$400K (one-time)**
-- **Total Year 1 ROI: $2.67M**
-- **Platform cost: ~$200K**
-- **Net ROI: $2.47M (12x return)**
-
----
-
-### For Salesforce
-
-| Revenue Stream | Year 1 | Year 3 | Year 5 |
-|----------------|--------|--------|--------|
-| Media Cloud licenses | $50M | $200M | $500M |
-| Data Cloud upsell | $30M | $100M | $250M |
-| Agentforce adoption | $20M | $80M | $200M |
-| Professional services | $10M | $30M | $50M |
-| **Total** | **$110M** | **$410M** | **$1B** |
-
-**Market capture**: If we capture just **2%** of the $45B enterprise media tech market = **$900M ARR**
+**The 9 MCP Tools We Built**:
+1. `get_products` - Discover advertising inventory
+2. `create_media_buy` - Create campaigns (AdCP v2.3.0)
+3. `get_media_buy` - Retrieve campaign configuration
+4. `get_media_buy_delivery` - Real-time performance metrics
+5. `update_media_buy` - Modify active campaigns
+6. `get_media_buy_report` - Analytics and reporting
+7. `list_creative_formats` - Available ad formats
+8. `echo` - Connection testing
+9. `get_campaign_stats` - Campaign statistics
 
 ---
 
-## Why Now?
+## Why Now: The Convergence Moment
 
-### The Convergence Moment
+Four industry shifts are converging simultaneously:
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                     2024                 2025                    │
-│                       │                   │                      │
-│  Agentforce ──────────┼───────────────────┼──────────▶          │
-│  launched             │                   │                      │
-│                       │                   │                      │
-│  MCP Protocol ────────┼───────────────────┼──────────▶          │
-│  (Anthropic)          │                   │                      │
-│                       │                   │                      │
-│  Data Cloud ──────────┼───────────────────┼──────────▶          │
-│  Clean Room           │                   │                      │
-│                       │                   │                      │
-│  Zero Copy ───────────┼───────────────────┼──────────▶          │
-│  (Snowflake/BQ)       │                   │                      │
-│                       │                   │                      │
-│  Cookie Deprecation ──┼───────────────────┼──────────▶          │
-│  (Chrome 2025)        │                   │                      │
-│                       │                   │                      │
-│                       │                   │                      │
-│                       ▼                   ▼                      │
-│               ┌───────────────────────────────────┐              │
-│               │                                   │              │
-│               │   SALESFORCE MEDIA CLOUD          │              │
-│               │   The Only Platform That          │              │
-│               │   Combines All Of These           │              │
-│               │                                   │              │
-│               └───────────────────────────────────┘              │
+│                                                                  │
+│  1. AGENTFORCE LAUNCHED                                          │
+│     Salesforce has an AI agent platform—competitors don't       │
+│                                                                  │
+│  2. MCP PROTOCOL EMERGED                                         │
+│     Universal AI-to-tool standard (Anthropic)                   │
+│                                                                  │
+│  3. PRIVACY REGULATIONS TIGHTENED                                │
+│     Clean Rooms are now mandatory, not optional                 │
+│     Cookie deprecation forces first-party data solutions        │
+│                                                                  │
+│  4. ZERO COPY MATURED                                            │
+│     Data Cloud + BigQuery/Snowflake real-time integration       │
+│                                                                  │
+│                         ↓                                        │
+│                                                                  │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │                                                            │  │
+│  │   SALESFORCE MEDIA CLOUD                                   │  │
+│  │   The Only Platform That Combines All Four                 │  │
+│  │                                                            │  │
+│  └───────────────────────────────────────────────────────────┘  │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### The Window Is Open
+**The window is open now because**:
+- Advertisers are desperate for first-party data solutions
+- No one has built AI-native advertising yet
+- Publishers want Clean Room partners
+- MCP is becoming the standard for AI tool integration
 
-1. **Cookie deprecation (2025)**: Advertisers NEED first-party data solutions
-2. **AI agents (2025)**: Everyone wants AI but no one has advertising AI
-3. **Privacy regulations**: Clean Rooms are now mandatory, not optional
-4. **Publisher pressure**: Yahoo, Google, Meta all want Clean Room partners
-
-**If we don't move now**:
+**If we wait**:
 - Google builds their own (walled garden)
-- Adobe catches up (they're trying)
-- A startup disrupts (inevitable if we don't)
+- Adobe catches up (they're investing)
+- A startup captures the standard
 
 ---
 
-## The Ask: Productize Media Cloud
+## The Competitive Truth
 
-### What We Have Today (Proof of Concept)
+### What We Have That No One Else Does
 
-| Component | Status | Production-Ready |
-|-----------|--------|-----------------|
-| Yahoo MCP Server | ✅ Deployed on Heroku | Yes |
-| 9 MCP Tools (AdCP v2.3.0) | ✅ Complete | Yes |
-| Data Cloud integration | ✅ Zero Copy working | Yes |
-| BigQuery/Snowflake writes | ✅ Working | Yes |
-| Agentforce-compatible | ✅ Validated | Yes |
-| Clean Room architecture | ✅ Designed | Needs productization |
-| Claude AI agent | ✅ Working | Yes |
+| Capability | Salesforce | Adobe | Google | Oracle | Trade Desk |
+|------------|------------|-------|--------|--------|------------|
+| **Customer 360 (CRM)** | ✅ Native | ❌ | ❌ | ❌ | ❌ |
+| **Data Cloud Clean Room** | ✅ Native | 🟡 Limited | ❌ Walled | ❌ | ❌ |
+| **AI Agent Platform** | ✅ Agentforce | ❌ | 🟡 Limited | ❌ | ❌ |
+| **Zero Copy (BQ/Snowflake)** | ✅ Native | ❌ | ❌ | ❌ | ❌ |
+| **MCP Protocol Support** | ✅ Built | ❌ | ❌ | ❌ | ❌ |
+| **AdCP v2.3.0 Compliance** | ✅ Built | ❌ | ❌ | ❌ | ❌ |
 
-### What We Need to Productize
-
-| Phase | Investment | Timeline | Outcome |
-|-------|------------|----------|---------|
-| **Phase 1**: Yahoo GA | $5M | 6 months | First publisher live |
-| **Phase 2**: Google + Meta | $10M | 12 months | Top 3 publishers |
-| **Phase 3**: Self-service | $15M | 18 months | Any publisher can connect |
-| **Phase 4**: Autonomous | $10M | 24 months | AI-managed campaigns |
-| **Total** | **$40M** | 24 months | **$500M+ ARR potential** |
+**The math is simple**: Salesforce has 6/6 capabilities. The best competitor has 1/6.
 
 ---
 
-## The Vision: Salesforce as the Advertising OS
+## What This Means for Salesforce
+
+### Strategic Value
+
+| If We Build It | If We Don't |
+|----------------|-------------|
+| Agentforce gets a killer use case | Agentforce has no advertising story |
+| Data Cloud becomes essential for advertisers | Data Cloud loses a major vertical |
+| MCP becomes the industry standard (we control it) | Someone else sets the standard |
+| Every publisher integrates with Salesforce | Publishers build for Google/Adobe |
+| New revenue stream from Media Cloud licenses | We cede the market |
+
+### The Platform Play
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                                                                      │
-│                    2027: THE ADVERTISING OS                          │
+│                    THE ADVERTISING OPERATING SYSTEM                  │
 │                                                                      │
 │   ┌─────────────────────────────────────────────────────────────┐   │
 │   │                                                              │   │
@@ -454,67 +401,65 @@ Trade Desk      ❌           ❌          ❌         ❌        0/4
 │    │              │          │          │              │   │        │
 │    └──────────────┴──────────┴──────────┴──────────────┘   │        │
 │                              │                              │        │
-│                     ┌────────┴────────┐                     │        │
-│                     │                 │                     │        │
-│                     │  $680B+ in ad   │                     │        │
-│                     │  spend flows    │                     │        │
-│                     │  through        │                     │        │
-│                     │  Salesforce     │                     │        │
-│                     │                 │                     │        │
-│                     └─────────────────┘                     │        │
+│                     All Ad Spend Orchestrated               │        │
+│                     Through Salesforce                      │        │
 │                                                              │        │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## The Bottom Line
+## What We Built (The Evidence)
 
-### Why Salesforce?
+This proof of concept includes:
 
-| Question | Answer |
-|----------|--------|
-| **Why us?** | We have Customer 360 + Data Cloud + Agentforce + Clean Room. No one else does. |
-| **Why now?** | Cookie deprecation, AI agents, privacy laws converging in 2025-2026. |
-| **Why this?** | $680B market, no dominant platform, enterprises desperate for solution. |
-| **Why not wait?** | Google/Adobe are investing. First mover wins the standard. |
+- **1,000+ lines** of production MCP server code
+- **9 MCP tools** fully implemented and tested
+- **Zero Copy integration** with Data Cloud working
+- **BigQuery/Snowflake writes** working in production
+- **Claude-powered AI agent** for natural language campaigns
+- **AdCP v2.3.0 validation** for IAB compliance
+- **Streamlit web UI** for demonstrations
+- **Architecture documentation** for Dentsu + Yahoo Clean Room
 
-### The Competitive Truth
+The technology is proven. The architecture is validated.
 
-**If Salesforce builds Media Cloud**:
-- We become the advertising operating system
-- Every advertiser needs Salesforce
-- Every publisher integrates with Salesforce
-- MCP becomes the industry standard (we control it)
-- $500M-$1B ARR opportunity
+---
 
-**If we don't**:
-- Google builds their own (and locks us out)
-- Adobe catches up (they're already trying)
-- We miss the AI advertising moment
-- Data Cloud loses a killer use case
-- Agentforce has no advertising story
+## The Ask
+
+Evaluate this proof of concept for productization.
+
+**What we need**:
+1. Technical review of the MCP server implementation
+2. Product strategy alignment with Agentforce roadmap
+3. Business case development with Finance
+4. Publisher partnership discussions (Yahoo is engaged)
+
+**What we're offering**:
+- A working prototype that demonstrates the complete workflow
+- Architecture that leverages existing Salesforce investments
+- A differentiated position no competitor can match
+- The foundation for a new product category
 
 ---
 
 ## One Final Thought
 
-We didn't just build a demo. We built:
+We didn't build a demo. We built:
 
-- **A working MCP server** with 9 production-ready tools
+- **A working MCP server** deployed in production
 - **Real Data Cloud integration** with Zero Copy
 - **Real BigQuery writes** with instant visibility
-- **Real AI agent** that creates campaigns in natural language
+- **Real AI agent** that creates campaigns via natural language
 - **Real AdCP v2.3.0 compliance** (IAB standard)
-- **Real Clean Room architecture** (Dentsu + Yahoo validated)
+- **Real Clean Room architecture** (validated with Dentsu + Yahoo)
 
-The technology works. The market is massive. The timing is perfect.
-
-**The only question is: Do we want to own the future of advertising?**
+The only question is: **Do we want to own the future of advertising?**
 
 ---
 
-**Document Version**: 1.0  
+**Document Version**: 2.0  
 **Author**: Arup Sarkar  
 **Contact**: arup.sarkar@salesforce.com
 
